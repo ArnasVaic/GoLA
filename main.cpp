@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <climits>
+#include <chrono>
 
 using namespace std;
 
@@ -53,9 +54,15 @@ void find_cycles(
 int main(int argc, char** argv)
 {
     unordered_map<size_t, size_t> frequencies;
-    size_t w = 5, h = 5;
-    find_cycles(w, h, frequencies);
+    size_t w = 4, h = 4;
 
+    auto start = chrono::steady_clock::now();
+    find_cycles(w, h, frequencies);
+    auto end = chrono::steady_clock::now();
+
+    auto ms = chrono::duration <double, milli> (end - start).count();
+    
+    cout << "Program took: " << ms << " ms" << endl;
     cout << "Board size: " << w << " x " << h << '\n'; 
     cout << "Total configurations searched: " << (1 << (w * h)) << endl;
 

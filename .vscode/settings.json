@@ -5,6 +5,7 @@
         "ostream": "cpp",
         "xiosbase": "cpp",
         "unordered_map": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "chrono": "cpp"
     }
 }
