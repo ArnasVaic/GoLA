@@ -182,12 +182,10 @@ constexpr uint64_t next_gen(
     {
         for(size_t j = 0; j < width; ++j)
         {
-            size_t n = neighbour_count(i % height, j % width, current, width, height);
+            size_t n = neighbour_count(i, j, current, width, height);
             size_t index = j + i * width; 
             next[index] = (n == 3 || (n == 2 && current[index]));
-
-            if(next[index] == 1)
-                state |= 1 << index;
+            state |= (next[index] << index);
         }
     }
     return state;
@@ -200,17 +198,18 @@ constexpr int neighbour_count(
     size_t width,
     size_t height)
 {
+    size_t offset_col = width + col;
+    int xl = (offset_col - 1) % width;
+    int xm = (offset_col + 0) % width;
+    int xr = (offset_col + 1) % width;
 
-    int xl = (width + col - 1) % width;
-    int xm = (width + col + 0) % width;
-    int xr = (width + col + 1) % width;
-
-    int yt = (height + row - 1) % height;
-    int ym = (height + row + 0) % height;
-    int yb = (height + row + 1) % height;
+    size_t offset_row = height + row;
+    int yt = ((offset_row - 1) % height) * width;
+    int ym = ((offset_row + 0) % height) * width;
+    int yb = ((offset_row + 1) % height) * width;
 
     return 
-        board[xl + yt * width] + board[xm + yt * width] + board[xr + yt * width] +
-        board[xl + ym * width]                          + board[xr + ym * width] +
-        board[xl + yb * width] + board[xm + yb * width] + board[xr + yb * width];
+        board[xl + yt] + board[xm + yt] + board[xr + yt] +
+        board[xl + ym]                  + board[xr + ym] +
+        board[xl + yb] + board[xm + yb] + board[xr + yb];
 }
