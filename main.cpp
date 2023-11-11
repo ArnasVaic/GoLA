@@ -4,209 +4,136 @@
 #include <iostream>
 #include <climits>
 #include <chrono>
+#include <bit>
 
 using namespace std;
 
-void print_board(
-    uint8_t *board,
-    size_t width,
-    size_t height);
+constexpr static size_t width = 4, height = 4;
 
-constexpr int neighbour_count(
-    size_t row,
-    size_t col,
-    uint8_t *board,
-    size_t width,
-    size_t height);
-
-constexpr uint64_t next_gen(
-    uint8_t *current,
-    uint8_t *next,
-    size_t width,
-    size_t height);
-
-void find_cycle(
-    uint8_t *buffer1,
-    uint8_t *buffer2,
-    size_t width,
-    size_t height,
-    size_t &cycle_start,
-    size_t &cycle_end);
-
-void initialize_buffer(
-    uint8_t *buffer1,
-    size_t width,
-    size_t height,
-    uint64_t configuration)
+constexpr static size_t to_index(size_t row, size_t col)
 {
-    for(uint64_t i = 0; i < width * height; ++i)
-    {
-        buffer1[i] = configuration & (1 << i) ? 1 : 0;
-    }
+    return col + row * width;
 }
 
-void find_cycles(
-    size_t width,
-    size_t height,
-    unordered_map<size_t, size_t> &frequencies
-);
+constexpr void set_bit(size_t row, size_t col, uint64_t &input)
+{
+    input |= (1 << to_index(row, col));
+}
+
+static_assert(width <= 8 && height <= 8, "Width & height must both be smaller or equal to 8.");
+
+constexpr static size_t total = width * height;
+constexpr static array<uint64_t, total> neighbour_mask_lookup = { []() constexpr 
+{
+    array<uint64_t, total> table {};
+    for (size_t row = 0; row < height; ++row)
+    {
+        array<size_t, 3> y = { (height + row - 1) % height, row, (row + 1) % height };
+
+        for (size_t col = 0; col < width; ++col)
+        {
+            array<size_t, 3> x = { (width + col - 1) % width, col, (col + 1) % width };
+
+            size_t index = to_index(row, col);
+
+            for(size_t i = 0; i < 3; ++i)
+            {
+                for(size_t j = 0; j < 3; ++j)
+                {
+                    if(i == 1 && j == 1)
+                        continue;
+
+                    set_bit(y[i], x[j], table[index]);
+                }
+            }
+        }
+    }
+    return table;
+}() };
+
+constexpr static bool alive_lookup[2][8] =
+{
+    { false, false, false, true, false, false, false, false },
+    { false, false, true , true, false, false, false, false }
+};
+
+static size_t sFrame = 0;
+static uint64_t sBoard;
+static unordered_map<size_t, size_t> sVisited;
+static unordered_map<size_t, size_t> sFrequencies;
+
+void print_board(uint64_t board);
+constexpr uint64_t next_gen(uint64_t u0);
+size_t find_cycle();
+void find_cycles();
 
 int main(int argc, char** argv)
 {
-    unordered_map<size_t, size_t> frequencies;
-    size_t w = 4, h = 4;
-
     auto start = chrono::steady_clock::now();
-    find_cycles(w, h, frequencies);
+    find_cycles();
     auto end = chrono::steady_clock::now();
 
     auto ms = chrono::duration <double, milli> (end - start).count();
     
     cout << "Program took: " << ms << " ms" << endl;
-    cout << "Board size: " << w << " x " << h << '\n'; 
-    cout << "Total configurations searched: " << (1 << (w * h)) << endl;
+    cout << "Board size: " << width << " x " << height << '\n'; 
+    cout << "Total configurations searched: " << (1 << (total)) << endl;
 
-    for (const auto& [period, count] : frequencies)
+    for (const auto& [period, count] : sFrequencies)
         cout << count << " configurations converge to a cycle of " << period << " frames\n";
-
-    // size_t width = 4, height = 4, start = 0, end = 0;
-    // uint8_t *buffer1 = new uint8_t[width * height];
-    // uint8_t *buffer2 = new uint8_t[width * height];
-    // initialize_buffer(buffer1, width, height, 64512);
-
-    // cout << "frame: " << 0 << endl;
-    // print_board(buffer1, width, height);
-    // cout << endl;
-
-    // find_cycle(buffer1, buffer2, width, height, start, end);
 }
 
-void find_cycles(
-    size_t width,
-    size_t height,
-    unordered_map<size_t, size_t> &frequencies)
+void find_cycles()
 {
-    uint8_t buffer1[width * height];
-    uint8_t buffer2[width * height];
-    
-    for(uint64_t i = 0; i < 1 << (width * height); ++i)
+    for(uint64_t i = 0; i < (1 << total); ++i)
     {
-        size_t start = 0, end = 0;
+        sBoard = i;
+        size_t period = find_cycle();
 
-        initialize_buffer(buffer1, width, height, i);
-        find_cycle(buffer1, buffer2, width, height, start, end);
-        size_t period = end - start;
-
-        // if(period == 4)
-        // {
-        //     initialize_buffer(buffer1, width, height, i);
-        //     cout << "Configuration: " << i << endl;
-        //     print_board(buffer1, width, height);
-        //     cout << endl;
-        // }
-
-        if(frequencies.count(period) > 0)
-        {
-            ++frequencies[period];
-        }
+        if(sFrequencies.count(period) > 0)
+            ++sFrequencies[period];
         else
-        {
-            frequencies[period] = 1;
-        }
+            sFrequencies[period] = 1;
     }
 }
 
-void print_board(
-    uint8_t *board,
-    size_t width,
-    size_t height)
+void print_board(uint64_t board)
 {
-    for(int i = 0; i < height; ++i)
+    cout << "frame: " << sFrame << '\n';
+    for(int i = 0; i < width * height; ++i)
     {
-        for(int j = 0; j < width; ++j)
-        {
-            printf("%c ", board[j + i * width] == 1 ? '#' : '.'); 
-        }
-        cout << endl;
-    }  
+        char c = (board & (1 << i)) == 0 ? '.' : '#';
+        cout << c << ' ';
+        if((1 + i) % width == 0)
+            cout << '\n';
+    }
+    cout << '\n';
 }
 
-void find_cycle(
-    uint8_t *buffer1,
-    uint8_t *buffer2,
-    size_t width,
-    size_t height,
-    size_t &cycle_start,
-    size_t &cycle_end)
+size_t find_cycle()
 {
-    bool turn = true;
-    size_t frame = 0;
-    std::unordered_map<uint64_t, uint64_t> state_dict;
+    sVisited.clear();
+    sFrame = 0;
     for(;;)
     {
-        uint8_t *from = turn ? buffer1 : buffer2;
-        uint8_t *to   = turn ? buffer2 : buffer1;
-        uint64_t s    = next_gen(from, to, width, height);
+        sBoard = next_gen(sBoard);
 
-        if(state_dict.count(s) > 0)
-        {
-            cycle_start = state_dict[s];
-            cycle_end = frame;
-            return;
-        }
-        else
-        {
-            state_dict[s] = frame;
-        }
-
-        turn = !turn;
-        ++frame;
-
-        // cout << "frame: " << frame << endl;
-        // print_board(to, width, height);
-        // cout << endl;
+        if(sVisited.count(sBoard) > 0)
+            return sFrame - sVisited[sBoard];
+    
+        sVisited[sBoard] = sFrame++;
     }
 }
 
-constexpr uint64_t next_gen(
-    uint8_t *current,
-    uint8_t *next,
-    size_t width,
-    size_t height)
+constexpr uint64_t next_gen(uint64_t u0)
 {
-    uint64_t state = 0;
-    for(size_t i = 0; i < height; ++i)
+    uint64_t u1 = 0;
+    for(size_t i = 0; i < width * height; ++i)
     {
-        for(size_t j = 0; j < width; ++j)
-        {
-            size_t n = neighbour_count(i, j, current, width, height);
-            size_t index = j + i * width; 
-            next[index] = (n == 3 || (n == 2 && current[index]));
-            state |= (next[index] << index);
-        }
+        uint64_t mask = neighbour_mask_lookup[i];
+        size_t n = __popcount(mask & u0);
+        bool alive = (u0 & (1 << i)) != 0;
+        u1 |= alive_lookup[alive][n] << i;
     }
-    return state;
-}
-
-constexpr int neighbour_count(
-    size_t row,
-    size_t col,
-    uint8_t *board,
-    size_t width,
-    size_t height)
-{
-    size_t offset_col = width + col;
-    int xl = (offset_col - 1) % width;
-    int xm = (offset_col + 0) % width;
-    int xr = (offset_col + 1) % width;
-
-    size_t offset_row = height + row;
-    int yt = ((offset_row - 1) % height) * width;
-    int ym = ((offset_row + 0) % height) * width;
-    int yb = ((offset_row + 1) % height) * width;
-
-    return 
-        board[xl + yt] + board[xm + yt] + board[xr + yt] +
-        board[xl + ym]                  + board[xr + ym] +
-        board[xl + yb] + board[xm + yb] + board[xr + yb];
+    return u1;
 }
