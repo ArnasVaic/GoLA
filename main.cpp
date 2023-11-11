@@ -86,8 +86,8 @@ void find_cycles(
     size_t height,
     unordered_map<size_t, size_t> &frequencies)
 {
-    uint8_t *buffer1 = new uint8_t[width * height];
-    uint8_t *buffer2 = new uint8_t[width * height];
+    uint8_t buffer1[width * height];
+    uint8_t buffer2[width * height];
     
     for(uint64_t i = 0; i < 1 << (width * height); ++i)
     {
@@ -114,9 +114,6 @@ void find_cycles(
             frequencies[period] = 1;
         }
     }
-
-    delete [] buffer1;
-    delete [] buffer2;
 }
 
 void print_board(
