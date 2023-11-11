@@ -191,13 +191,12 @@ constexpr int neighbour_count(
     size_t width,
     size_t height)
 {
-    size_t shifted_row = height + row;
     size_t shifted_col = width + col;
-
     size_t xl = (shifted_col - 1) % width;
     size_t xm = (shifted_col + 0) % width;
     size_t xr = (shifted_col + 1) % width;
 
+    size_t shifted_row = height + row;
     size_t yt = ((shifted_row - 1) % height) * width;
     size_t ym = ((shifted_row + 0) % height) * width;
     size_t yb = ((shifted_row + 1) % height) * width;
