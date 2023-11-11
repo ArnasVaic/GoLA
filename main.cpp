@@ -12,14 +12,14 @@ void print_board(
     size_t width,
     size_t height);
 
-int neighbour_count(
+constexpr int neighbour_count(
     size_t row,
     size_t col,
     uint8_t *board,
     size_t width,
     size_t height);
 
-uint64_t next_gen(
+constexpr uint64_t next_gen(
     uint8_t *current,
     uint8_t *next,
     size_t width,
@@ -171,7 +171,7 @@ void find_cycle(
     }
 }
 
-uint64_t next_gen(
+constexpr uint64_t next_gen(
     uint8_t *current,
     uint8_t *next,
     size_t width,
@@ -193,7 +193,7 @@ uint64_t next_gen(
     return state;
 }
 
-int neighbour_count(
+constexpr int neighbour_count(
     size_t row,
     size_t col,
     uint8_t *board,
