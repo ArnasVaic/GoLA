@@ -157,12 +157,19 @@ void find_cycle(
     }
 }
 
+constexpr bool alive_lookup[2][8] =
+{
+    { false, false, false, true, false, false, false, false },
+    { false, false, true , true, false, false, false, false }
+};
+
 constexpr uint64_t next_gen(
     uint64_t current,
     size_t width,
     size_t height)
 {
     uint64_t state = 0;
+
     for(size_t i = 0; i < height; ++i)
     {
         for(size_t j = 0; j < width; ++j)
@@ -172,8 +179,8 @@ constexpr uint64_t next_gen(
             // printf("%lu ", n);
 
             size_t index = j + i * width; 
-            size_t old_alive = current & (1 << index);
-            size_t new_alive = n == 3 || (n == 2 && old_alive);
+            size_t old_alive = (current & (1 << index)) != 0;
+            size_t new_alive = alive_lookup[old_alive][n];
             state |= new_alive << index;
         }
         // cout << '\n';
