@@ -6,6 +6,7 @@
         "xiosbase": "cpp",
         "unordered_map": "cpp",
         "iosfwd": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "bit": "cpp"
     }
 }

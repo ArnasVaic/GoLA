@@ -4,30 +4,29 @@
 #include <iostream>
 #include <climits>
 #include <chrono>
+#include <bit>
 
 using namespace std;
 
 void print_board(
-    uint8_t *board,
+    uint64_t board,
     size_t width,
     size_t height);
 
-int neighbour_count(
+constexpr int neighbour_count(
     size_t row,
     size_t col,
-    uint8_t *board,
+    uint64_t board,
     size_t width,
     size_t height);
 
-uint64_t next_gen(
-    uint8_t *current,
-    uint8_t *next,
+constexpr uint64_t next_gen(
+    uint64_t current,
     size_t width,
     size_t height);
 
 void find_cycle(
-    uint8_t *buffer1,
-    uint8_t *buffer2,
+    uint64_t board,
     size_t width,
     size_t height,
     size_t &cycle_start,
@@ -70,15 +69,12 @@ int main(int argc, char** argv)
         cout << count << " configurations converge to a cycle of " << period << " frames\n";
 
     // size_t width = 4, height = 4, start = 0, end = 0;
-    // uint8_t *buffer1 = new uint8_t[width * height];
-    // uint8_t *buffer2 = new uint8_t[width * height];
-    // initialize_buffer(buffer1, width, height, 64512);
-
+    
     // cout << "frame: " << 0 << endl;
-    // print_board(buffer1, width, height);
+    // print_board(64512, width, height);
     // cout << endl;
 
-    // find_cycle(buffer1, buffer2, width, height, start, end);
+    // find_cycle(64512, width, height, start, end);
 }
 
 void find_cycles(
@@ -86,15 +82,10 @@ void find_cycles(
     size_t height,
     unordered_map<size_t, size_t> &frequencies)
 {
-    uint8_t *buffer1 = new uint8_t[width * height];
-    uint8_t *buffer2 = new uint8_t[width * height];
-    
     for(uint64_t i = 0; i < 1 << (width * height); ++i)
     {
         size_t start = 0, end = 0;
-
-        initialize_buffer(buffer1, width, height, i);
-        find_cycle(buffer1, buffer2, width, height, start, end);
+        find_cycle(i, width, height, start, end);
         size_t period = end - start;
 
         // if(period == 4)
@@ -114,13 +105,10 @@ void find_cycles(
             frequencies[period] = 1;
         }
     }
-
-    delete [] buffer1;
-    delete [] buffer2;
 }
 
 void print_board(
-    uint8_t *board,
+    uint64_t board,
     size_t width,
     size_t height)
 {
@@ -128,52 +116,49 @@ void print_board(
     {
         for(int j = 0; j < width; ++j)
         {
-            printf("%c ", board[j + i * width] == 1 ? '#' : '.'); 
+            size_t index = j + i * width;
+            uint64_t alive = board & (1 << index);
+            printf("%c ", alive ? '#' : '.'); 
         }
         cout << endl;
     }  
 }
 
 void find_cycle(
-    uint8_t *buffer1,
-    uint8_t *buffer2,
+    uint64_t initial_state,
     size_t width,
     size_t height,
     size_t &cycle_start,
     size_t &cycle_end)
 {
-    bool turn = true;
     size_t frame = 0;
     std::unordered_map<uint64_t, uint64_t> state_dict;
+    uint64_t current_state = initial_state;
     for(;;)
     {
-        uint8_t *from = turn ? buffer1 : buffer2;
-        uint8_t *to   = turn ? buffer2 : buffer1;
-        uint64_t s    = next_gen(from, to, width, height);
+        current_state = next_gen(current_state, width, height);
 
-        if(state_dict.count(s) > 0)
+        if(state_dict.count(current_state) > 0)
         {
-            cycle_start = state_dict[s];
+            cycle_start = state_dict[current_state];
             cycle_end = frame;
             return;
         }
         else
         {
-            state_dict[s] = frame;
+            state_dict[current_state] = frame;
         }
 
-        turn = !turn;
         ++frame;
 
         // cout << "frame: " << frame << endl;
-        // print_board(to, width, height);
+        // print_board(current_state, width, height);
         // cout << endl;
     }
 }
 
-uint64_t next_gen(
-    uint8_t *current,
-    uint8_t *next,
+constexpr uint64_t next_gen(
+    uint64_t current,
     size_t width,
     size_t height)
 {
@@ -182,35 +167,51 @@ uint64_t next_gen(
     {
         for(size_t j = 0; j < width; ++j)
         {
-            size_t n = neighbour_count(i % height, j % width, current, width, height);
-            size_t index = j + i * width; 
-            next[index] = (n == 3 || (n == 2 && current[index]));
+            size_t n = neighbour_count(i, j, current, width, height);
 
-            if(next[index] == 1)
-                state |= 1 << index;
+            // printf("%lu ", n);
+
+            size_t index = j + i * width; 
+            size_t old_alive = current & (1 << index);
+            size_t new_alive = n == 3 || (n == 2 && old_alive);
+            state |= new_alive << index;
         }
+        // cout << '\n';
     }
+
+    // cout << '\n';
+
     return state;
 }
 
-int neighbour_count(
+constexpr int neighbour_count(
     size_t row,
     size_t col,
-    uint8_t *board,
+    uint64_t board,
     size_t width,
     size_t height)
 {
+    size_t shifted_row = height + row;
+    size_t shifted_col = width + col;
 
-    int xl = (width + col - 1) % width;
-    int xm = (width + col + 0) % width;
-    int xr = (width + col + 1) % width;
+    size_t xl = (shifted_col - 1) % width;
+    size_t xm = (shifted_col + 0) % width;
+    size_t xr = (shifted_col + 1) % width;
 
-    int yt = (height + row - 1) % height;
-    int ym = (height + row + 0) % height;
-    int yb = (height + row + 1) % height;
+    size_t yt = ((shifted_row - 1) % height) * width;
+    size_t ym = ((shifted_row + 0) % height) * width;
+    size_t yb = ((shifted_row + 1) % height) * width;
 
-    return 
-        board[xl + yt * width] + board[xm + yt * width] + board[xr + yt * width] +
-        board[xl + ym * width]                          + board[xr + ym * width] +
-        board[xl + yb * width] + board[xm + yb * width] + board[xr + yb * width];
+    uint64_t mask = 0;
+    mask |= (1 << (xl + yt));
+    mask |= (1 << (xm + yt));
+    mask |= (1 << (xr + yt));
+    mask |= (1 << (xl + ym));
+
+    mask |= (1 << (xr + ym));
+    mask |= (1 << (xl + yb));
+    mask |= (1 << (xm + yb));
+    mask |= (1 << (xr + yb));
+
+    return __popcount(board & mask);
 }
