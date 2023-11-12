@@ -7,91 +7,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-template<std::size_t Width, std::size_t Height>
-class BoardCompare
-{
-    public:
-
-    constexpr bool operator()(const uint64_t &a, const uint64_t &b) const
-    {
-        return is_equivalent(a, b);
-    }
-
-    constexpr static bool is_equivalent(uint64_t a, uint64_t b)
-    {
-        uint64_t h = flip<true, false>(b);
-        uint64_t v = flip<false, true>(b);
-        uint64_t hv = flip<true, true>(b);
-        return 
-            is_translated(a, b) ||
-            is_translated(a, h) || 
-            is_translated(a, v) ||
-            is_translated(a, hv);
-    }
-
-    template<bool horz, bool vert>
-    constexpr static uint64_t flip(uint64_t state)
-    {
-        uint64_t result = 0;
-        for(std::size_t row = 0; row < Height; ++row)
-        {
-            for(std::size_t col = 0; col < Width; ++col)
-            {
-                std::size_t old_index = to_index<Width>(row, col);
-                bool alive = state & (1 << old_index);
-
-                size_t new_row = row;
-                if (horz)
-                    new_row = Height - row - 1;
-
-                size_t new_col = col;
-                if (vert)
-                    new_col = Width - col - 1;
-
-                std::size_t new_index = to_index<Width>(new_row, new_col);
-                result |= (alive << new_index);
-            }
-        }
-        return result;
-    }
-
-    constexpr static bool is_translated(uint64_t a, uint64_t b)
-    {
-        for(size_t row = 0; row < Height; ++row)
-        {
-            for(size_t col = 0; col < Width; ++col)
-            {
-                if(translate(row, col, b) == a)
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    constexpr static uint64_t translate(
-        std::size_t row_offset, 
-        std::size_t col_offset, 
-        uint64_t state)
-    {
-        uint64_t result = 0;
-
-        for(std::size_t row = 0; row < Height; ++row)
-        {
-            for(std::size_t col = 0; col < Width; ++col)
-            {
-                std::size_t old_index = to_index<Width>(row, col);
-                bool alive = state & (1 << old_index);
-                std::size_t new_index = to_index<Width>(
-                    (row + row_offset) % Height,
-                    (col + col_offset) % Width);
-                result |= (alive << new_index);
-            }
-        }
-
-        return result;
-    }
-};
-
 template<std::size_t TWidth, std::size_t THeight>
 class Board
 {
@@ -118,12 +33,11 @@ public:
 
     constexpr static std::size_t Total = TWidth * THeight;
 
+
     constexpr Board();
 
-    constexpr Board(uint64_t state)
-    {
-        set(state);
-    }
+    constexpr Board(uint64_t state);
+
 
     constexpr void set(uint64_t state);
 
@@ -136,9 +50,18 @@ public:
     std::size_t find_cycle(uint64_t &period_1_state);
 
     void find_cycles(
-        std::unordered_set<uint64_t/*, std::hash<uint64_t>, BoardCompare<TWidth, THeight>*/> &stable,
+        std::unordered_set<uint64_t> &stable,
         std::unordered_map<std::size_t, std::size_t> &frequencies
     );
+
+    constexpr static bool is_equivalent(uint64_t a, uint64_t b);
+
+    template<bool horz, bool vert>
+    constexpr static uint64_t flip(uint64_t state);
+
+    constexpr static bool is_translated(uint64_t a, uint64_t b);
+
+    constexpr static uint64_t translate(std::size_t row_offset, std::size_t col_offset, uint64_t state);
 
 private:
 
@@ -177,6 +100,12 @@ constexpr Board<Width, Height>::Board()
     : m_state(0), m_frame(0), m_visited()
 {
 
+}
+
+template<std::size_t Width, std::size_t Height>
+constexpr Board<Width, Height>::Board(uint64_t state)
+{
+    set(state);
 }
 
 template<std::size_t Width, std::size_t Height>
@@ -241,10 +170,10 @@ void Board<TWidth, THeight>::find_cycles(
         set(i);
         size_t period = find_cycle(s);
 
-        if(period == 1 && s != 0 && !stable.contains(s) && )
+        if(period == 1 && s != 0 && !stable.contains(s))
             stable.insert(s);
 
-        if(frequencies.count(period) > 0)
+        if(frequencies.contains(period))
             ++frequencies[period];
         else
             frequencies[period] = 1;
@@ -283,4 +212,82 @@ constexpr void set_bit(
     uint64_t &input)
 {
     input |= (1 << to_index<Width>(row, col));
+}
+
+template<std::size_t Width, std::size_t Height>
+constexpr bool Board<Width, Height>::is_equivalent(uint64_t a, uint64_t b)
+{
+    uint64_t h = flip<true, false>(b);
+    uint64_t v = flip<false, true>(b);
+    uint64_t hv = flip<true, true>(b);
+    return 
+        is_translated(a, b) ||
+        is_translated(a, h) || 
+        is_translated(a, v) ||
+        is_translated(a, hv);
+}
+
+template<std::size_t Width, std::size_t Height>
+template<bool horz, bool vert>
+constexpr uint64_t Board<Width, Height>::flip(uint64_t state)
+{
+    uint64_t result = 0;
+    for(std::size_t row = 0; row < Height; ++row)
+    {
+        for(std::size_t col = 0; col < Width; ++col)
+        {
+            std::size_t old_index = to_index<Width>(row, col);
+            bool alive = state & (1 << old_index);
+
+            size_t new_row = row;
+            if (horz)
+                new_row = Height - row - 1;
+
+            size_t new_col = col;
+            if (vert)
+                new_col = Width - col - 1;
+
+            std::size_t new_index = to_index<Width>(new_row, new_col);
+            result |= (alive << new_index);
+        }
+    }
+    return result;
+}
+
+template<std::size_t Width, std::size_t Height>
+constexpr bool Board<Width, Height>::is_translated(uint64_t a, uint64_t b)
+{
+    for(size_t row = 0; row < Height; ++row)
+    {
+        for(size_t col = 0; col < Width; ++col)
+        {
+            if(translate(row, col, b) == a)
+                return true;
+        }
+    }
+    return false;
+}
+
+template<std::size_t Width, std::size_t Height>
+constexpr uint64_t Board<Width, Height>::translate(
+    std::size_t row_offset, 
+    std::size_t col_offset, 
+    uint64_t state)
+{
+    uint64_t result = 0;
+
+    for(std::size_t row = 0; row < Height; ++row)
+    {
+        for(std::size_t col = 0; col < Width; ++col)
+        {
+            std::size_t old_index = to_index<Width>(row, col);
+            bool alive = state & (1 << old_index);
+            std::size_t new_index = to_index<Width>(
+                (row + row_offset) % Height,
+                (col + col_offset) % Width);
+            result |= (alive << new_index);
+        }
+    }
+
+    return result;
 }

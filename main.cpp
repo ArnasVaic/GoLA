@@ -6,6 +6,7 @@
 #include <chrono>
 #include <unordered_set>
 #include <bit>
+#include <bitset>
 #include <board.h>
 
 using namespace std;
@@ -13,7 +14,7 @@ using namespace std;
 int main(int argc, char** argv)
 {
     constexpr size_t w = 4, h = 4;
-    Board<w, h> board;
+    Board<w,h> board;
     unordered_set<uint64_t> stable;
     unordered_map<size_t, size_t> frequencies;
 
@@ -29,8 +30,34 @@ int main(int argc, char** argv)
     for (const auto& [period, count] : frequencies)
         cout << count << " configurations converge to a cycle of " << period << " frames\n";
 
-    cout << "Unique 1-period states: " << stable.size() << '\n';
+    for (auto it = stable.begin(); it != stable.end();) {
+        uint64_t currentElement = *it;
+        bool predicateSatisfied = false;
 
+        // Check if there exists another element b such that P(a, b) is satisfied
+        for (uint64_t b : stable) {
+            if (Board<w,h>::is_equivalent(currentElement, b) && b != currentElement) {
+                predicateSatisfied = true;
+                break;
+            }
+        }
+
+        // If the predicate is satisfied, erase the current element
+        if (predicateSatisfied) {
+            it = stable.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    cout << "Unique 1-period states: " << stable.size() << '\n';
+    Board<w,h> temp;
     for (const auto& state : stable)
-        cout << state;
+    {
+        temp.set(state);
+        cout << bitset<temp.Total>(state) << '\n';
+        cout << temp << '\n';
+    }
+
+    //cout << BoardCompare<4, 4>()(0b0010000110000100, 0b0010010010000001) << '\n';
 }
