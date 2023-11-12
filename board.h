@@ -7,6 +7,91 @@
 #include <unordered_map>
 #include <unordered_set>
 
+template<std::size_t Width, std::size_t Height>
+class BoardCompare
+{
+    public:
+
+    constexpr bool operator()(const uint64_t &a, const uint64_t &b) const
+    {
+        return is_equivalent(a, b);
+    }
+
+    constexpr static bool is_equivalent(uint64_t a, uint64_t b)
+    {
+        uint64_t h = flip<true, false>(b);
+        uint64_t v = flip<false, true>(b);
+        uint64_t hv = flip<true, true>(b);
+        return 
+            is_translated(a, b) ||
+            is_translated(a, h) || 
+            is_translated(a, v) ||
+            is_translated(a, hv);
+    }
+
+    template<bool horz, bool vert>
+    constexpr static uint64_t flip(uint64_t state)
+    {
+        uint64_t result = 0;
+        for(std::size_t row = 0; row < Height; ++row)
+        {
+            for(std::size_t col = 0; col < Width; ++col)
+            {
+                std::size_t old_index = to_index<Width>(row, col);
+                bool alive = state & (1 << old_index);
+
+                size_t new_row = row;
+                if (horz)
+                    new_row = Height - row - 1;
+
+                size_t new_col = col;
+                if (vert)
+                    new_col = Width - col - 1;
+
+                std::size_t new_index = to_index<Width>(new_row, new_col);
+                result |= (alive << new_index);
+            }
+        }
+        return result;
+    }
+
+    constexpr static bool is_translated(uint64_t a, uint64_t b)
+    {
+        for(size_t row = 0; row < Height; ++row)
+        {
+            for(size_t col = 0; col < Width; ++col)
+            {
+                if(translate(row, col, b) == a)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    constexpr static uint64_t translate(
+        std::size_t row_offset, 
+        std::size_t col_offset, 
+        uint64_t state)
+    {
+        uint64_t result = 0;
+
+        for(std::size_t row = 0; row < Height; ++row)
+        {
+            for(std::size_t col = 0; col < Width; ++col)
+            {
+                std::size_t old_index = to_index<Width>(row, col);
+                bool alive = state & (1 << old_index);
+                std::size_t new_index = to_index<Width>(
+                    (row + row_offset) % Height,
+                    (col + col_offset) % Width);
+                result |= (alive << new_index);
+            }
+        }
+
+        return result;
+    }
+};
+
 template<std::size_t TWidth, std::size_t THeight>
 class Board
 {
@@ -35,26 +120,27 @@ public:
 
     constexpr Board();
 
+    constexpr Board(uint64_t state)
+    {
+        set(state);
+    }
+
     constexpr void set(uint64_t state);
 
-    constexpr uint64_t get();
+    constexpr uint64_t get() const;
 
-    constexpr std::size_t get_frame();
+    constexpr std::size_t get_frame() const;
 
     constexpr void next_gen();
 
     std::size_t find_cycle(uint64_t &period_1_state);
 
     void find_cycles(
-        std::unordered_set<uint64_t> &stable,
+        std::unordered_set<uint64_t/*, std::hash<uint64_t>, BoardCompare<TWidth, THeight>*/> &stable,
         std::unordered_map<std::size_t, std::size_t> &frequencies
     );
 
 private:
-
-    constexpr static void set_bit(std::size_t row, std::size_t col, uint64_t &input);
-
-    constexpr static std::size_t to_index(std::size_t row, std::size_t col);
 
     constexpr static std::array<uint64_t, Total> neighbour_mask_lookup = { []() constexpr 
     {
@@ -67,7 +153,7 @@ private:
             {
                 std::array<std::size_t, 3> x = { (Width + col - 1) % Width, col, (col + 1) % Width };
 
-                std::size_t index = to_index(row, col);
+                std::size_t index = to_index<Width>(row, col);
 
                 for(std::size_t i = 0; i < 3; ++i)
                 {
@@ -76,13 +162,14 @@ private:
                         if(i == 1 && j == 1)
                             continue;
 
-                        set_bit(y[i], x[j], table[index]);
+                        set_bit<Width>(y[i], x[j], table[index]);
                     }
                 }
             }
         }
         return table;
     }() };
+    
 };
 
 template<std::size_t Width, std::size_t Height>
@@ -101,13 +188,13 @@ constexpr void Board<Width, Height>::set(uint64_t state)
 }
 
 template<std::size_t Width, std::size_t Height>
-constexpr uint64_t Board<Width, Height>::get()
+constexpr uint64_t Board<Width, Height>::get() const
 {
     return m_state;
 }
 
 template<std::size_t Width, std::size_t Height>
-constexpr std::size_t Board<Width, Height>::get_frame()
+constexpr std::size_t Board<Width, Height>::get_frame() const
 {
     return m_frame;
 }
@@ -143,9 +230,9 @@ std::size_t Board<Width, Height>::find_cycle(uint64_t &period_1_state)
     }
 }
 
-template<std::size_t Width, std::size_t Height>
-void Board<Width, Height>::find_cycles(
-    std::unordered_set<uint64_t> &stable,
+template<std::size_t TWidth, std::size_t THeight>
+void Board<TWidth, THeight>::find_cycles(
+    std::unordered_set<uint64_t/*, std::hash<uint64_t>, BoardCompare<TWidth, THeight>*/> &stable,
     std::unordered_map<std::size_t, std::size_t> &frequencies)
 {
     uint64_t s = 0;
@@ -154,7 +241,7 @@ void Board<Width, Height>::find_cycles(
         set(i);
         size_t period = find_cycle(s);
 
-        if(period == 1 && s != 0 && stable.count(s) == 0)
+        if(period == 1 && s != 0 && !stable.contains(s) && )
             stable.insert(s);
 
         if(frequencies.count(period) > 0)
@@ -167,7 +254,7 @@ void Board<Width, Height>::find_cycles(
 template<std::size_t Width, std::size_t Height>
 std::ostream& operator<<(std::ostream& os, const Board<Width, Height>& board)
 {
-    os << "frame: " << board.get_frame() << '\n';
+    //os << "frame: " << board.get_frame() << '\n';
 
     uint64_t state = board.get();
 
@@ -183,19 +270,17 @@ std::ostream& operator<<(std::ostream& os, const Board<Width, Height>& board)
     return os;
 }
 
-template<std::size_t Width, std::size_t Height>
-constexpr std::size_t Board<Width, Height>::to_index(
-    std::size_t row, 
-    std::size_t col)
+template<std::size_t Width>
+constexpr std::size_t to_index(std::size_t row, std::size_t col)
 {
     return col + row * Width;
 }
 
-template<std::size_t Width, std::size_t Height>
-constexpr void Board<Width, Height>::set_bit(
+template<std::size_t Width>
+constexpr void set_bit(
     std::size_t row, 
     std::size_t col, 
     uint64_t &input)
 {
-    input |= (1 << to_index(row, col));
+    input |= (1 << to_index<Width>(row, col));
 }
