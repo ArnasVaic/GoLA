@@ -23,7 +23,7 @@ private:
 
     uint64_t m_state;
     std::size_t m_frame;
-    std::unordered_map<std::size_t, std::size_t> m_visited;
+    std::unordered_map<std::uint64_t, std::size_t> m_visited;
 
 public:
 
@@ -47,12 +47,8 @@ public:
 
     constexpr void next_gen();
 
-    std::size_t find_cycle(uint64_t &period_1_state);
-
-    void find_cycles(
-        std::unordered_set<uint64_t> &stable,
-        std::unordered_map<std::size_t, std::size_t> &frequencies
-    );
+    std::vector<uint64_t> find_cycle();
+    std::unordered_set<std::vector<uint64_t>> find_unique_cycles();
 
     constexpr static bool is_equivalent(uint64_t a, uint64_t b);
 
@@ -62,6 +58,10 @@ public:
     constexpr static bool is_translated(uint64_t a, uint64_t b);
 
     constexpr static uint64_t translate(std::size_t row_offset, std::size_t col_offset, uint64_t state);
+
+    constexpr bool are_cycles_equivalent(
+        const std::vector<uint64_t> &lhs, 
+        const std::vector<uint64_t> &rhs);
 
 private:
 
@@ -143,16 +143,25 @@ constexpr void Board<Width, Height>::next_gen()
 }
 
 template<std::size_t Width, std::size_t Height>
-std::size_t Board<Width, Height>::find_cycle(uint64_t &period_1_state)
+std::vector<uint64_t> Board<Width, Height>::find_cycle()
 {
     for(;;)
     {
         next_gen();
         
-        if(m_visited.count(m_state) > 0)
+        if(m_visited.contains(m_state))
         {
-            period_1_state = m_state;
-            return m_frame - m_visited[m_state];
+            size_t start = m_visited[m_state];
+            std::vector<uint64_t> cycle;
+
+            for (const auto& [state, frame] : m_visited) {
+                if(frame >= start)
+                {
+                    cycle.push_back(state);
+                }
+            }
+
+            return cycle;
         }
     
         m_visited[m_state] = m_frame++;
@@ -160,23 +169,47 @@ std::size_t Board<Width, Height>::find_cycle(uint64_t &period_1_state)
 }
 
 template<std::size_t TWidth, std::size_t THeight>
-void Board<TWidth, THeight>::find_cycles(
-    std::unordered_set<uint64_t/*, std::hash<uint64_t>, BoardCompare<TWidth, THeight>*/> &stable,
-    std::unordered_map<std::size_t, std::size_t> &frequencies)
+std::unordered_set<std::vector<uint64_t>> Board<TWidth, THeight>::find_unique_cycles()
 {
+    std::unordered_set<std::vector<uint64_t>> cycles;
     uint64_t s = 0;
     for(uint64_t i = 0; i < (1 << Total); ++i)
     {
         set(i);
-        size_t period = find_cycle(s);
+        std::vector<uint64_t> cycle = find_cycle();
+        if(cycle[0] != 0 && !cycles.contains(cycle))
+            cycles.insert(cycle);
+    }
 
-        if(period == 1 && s != 0 && !stable.contains(s))
-            stable.insert(s);
+    // Remove equivalent cycles
+    for (auto it = cycles.begin(); it != cycles.end();) {
+        std::vector<uint64_t> current = *it;
+        bool predicateSatisfied = false;
 
-        if(frequencies.contains(period))
-            ++frequencies[period];
-        else
-            frequencies[period] = 1;
+        // Check if there exists another element b such that P(a, b) is satisfied
+        for (std::vector<uint64_t> other : cycles) {
+            if (Board<w,h>::is_equivalent(current, other) && other != current) {
+                predicateSatisfied = true;
+                break;
+            }
+        }
+
+        // If the predicate is satisfied, erase the current element
+        if (predicateSatisfied) {
+            it = cycles.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    return cycles;
+}
+
+bool are_cycles_equivalent(const std::vector<uint64_t> &lhs, const std::vector<uint64_t> &rhs)
+{
+    for (const auto &elem : rhs)
+    {
+        if(lhs[0])
     }
 }
 

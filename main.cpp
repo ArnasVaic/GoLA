@@ -15,11 +15,9 @@ int main(int argc, char** argv)
 {
     constexpr size_t w = 4, h = 4;
     Board<w,h> board;
-    unordered_set<uint64_t> stable;
-    unordered_map<size_t, size_t> frequencies;
-
+    
     auto start = chrono::steady_clock::now();
-    board.find_cycles(stable, frequencies);
+    auto cycles = board.find_cycles();
     auto end = chrono::steady_clock::now();
     auto ms = chrono::duration <double, milli> (end - start).count();
     
