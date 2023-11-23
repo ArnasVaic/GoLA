@@ -9,4 +9,4 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Add your source files here
-add_executable(GoLC main.cpp board.h)
+add_executable(GoLC main.cpp board.hpp)
