@@ -1,137 +1,12 @@
 #pragma once
 
-#include <bit>
-#include <array>
-#include <vector>
-#include <cstdint>
-#include <iostream>
 #include <unordered_map>
-#include <unordered_set>
+#include <cycle.hpp>
+#include <frame.hpp>
 
-template <std::size_t TSize>
-class VectorU64Equal {
-
-public:
-
-    bool operator()(
-        const std::vector<uint64_t>& lhs, 
-        const std::vector<uint64_t>& rhs) const {
-        if(lhs.size() != rhs.size())
-            return false;
-            
-        return are_cycles_equivalent(lhs, rhs);
-    }
-
-private:
-
-    constexpr static bool is_equivalent(const uint64_t lhs, const uint64_t rhs)
-    {
-        if(std::popcount(lhs) != std::popcount(rhs))
-            return false;
-
-        uint64_t h = flip<true, false>(rhs);
-        uint64_t v = flip<false, true>(rhs);
-        uint64_t hv = flip<true, true>(rhs);
-        return 
-            is_translated(lhs, rhs) ||
-            is_translated(lhs, h) || 
-            is_translated(lhs, v) ||
-            is_translated(lhs, hv);
-    }
-
-    template<bool horz, bool vert>
-    constexpr static uint64_t flip(uint64_t state)
-    {
-        uint64_t result = 0;
-        for(std::size_t row = 0; row < TSize; ++row)
-        {
-            for(std::size_t col = 0; col < TSize; ++col)
-            {
-                std::size_t old_index = to_index<TSize>(row, col);
-                bool alive = state & (1 << old_index);
-
-                size_t new_row = row;
-                if (horz)
-                    new_row = TSize - row - 1;
-
-                size_t new_col = col;
-                if (vert)
-                    new_col = TSize - col - 1;
-
-                std::size_t new_index = to_index<TSize>(new_row, new_col);
-                result |= (alive << new_index);
-            }
-        }
-        return result;
-    }
-
-    constexpr static bool is_translated(
-        uint64_t lhs, 
-        uint64_t rhs)
-    {
-        for(size_t row = 0; row < TSize; ++row)
-        {
-            for(size_t col = 0; col < TSize; ++col)
-            {
-                if(translate(row, col, rhs) == lhs)
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    constexpr static uint64_t translate(
-        std::size_t row_offset, 
-        std::size_t col_offset, 
-        uint64_t state)
-    {
-        uint64_t result = 0;
-
-        for(std::size_t row = 0; row < TSize; ++row)
-        {
-            for(std::size_t col = 0; col < TSize; ++col)
-            {
-                std::size_t old_index = to_index<TSize>(row, col);
-                bool alive = state & (1 << old_index);
-                std::size_t new_index = to_index<TSize>(
-                    (row + row_offset) % TSize,
-                    (col + col_offset) % TSize);
-                result |= (alive << new_index);
-            }
-        }
-
-        return result;
-    }
-
-    constexpr static bool are_cycles_equivalent(
-        const std::vector<uint64_t> &lhs, 
-        const std::vector<uint64_t> &rhs)
-    {
-        for (const auto &elem : rhs)
-        {
-            if(is_equivalent(lhs[0], elem))
-                return true;
-        }
-        return false;
-    }
-};
-
-class VectorU64Hash {
-public:
-    size_t operator()(const std::vector<uint64_t>& vector) const {
-        std::hash<uint64_t> hasher;
-        size_t seed = 0;
-        for (const auto& i : vector) {
-            seed ^= hasher(i) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-        }
-        return seed;
-    }
-};
-
-template<std::size_t TSize>
-class Board
+template<size_t Ts>
+class GameOfLife
 {
-    static_assert(TSize <= 8, "Side length must be less or equal to 8");
 
 private:
 
@@ -141,26 +16,28 @@ private:
         { false, false, true , true, false, false, false, false, false }
     };
 
-    uint64_t m_state;
-    std::size_t m_frame;
-    std::unordered_map<std::uint64_t, std::size_t> m_visited;
+    Frame<Ts> m_frame;
+    size_t m_generation;
+
+    std::unordered_map<Frame<Ts>, size_t> m_visited;
 
 public:
 
-    constexpr static std::size_t Size = TSize;
+    constexpr GameOfLife(Frame<Ts> frame)
+    : m_frame(frame)
+    {
 
-    constexpr static std::size_t Total = TSize * TSize;
+    }
 
+    [[nodiscard]] constexpr Frame<Ts> current_frame() const
+    {
+        return m_frame;
+    }
 
-    constexpr Board();
-
-    constexpr Board(uint64_t state);
-
-    constexpr void set(uint64_t state);
-
-    constexpr uint64_t get() const;
-
-    constexpr std::size_t get_frame() const;
+    [[nodiscard]] constexpr std::size_t generation() const
+    {
+        return m_generation;
+    }
 
     constexpr void next_gen();
 

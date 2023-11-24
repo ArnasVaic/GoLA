@@ -6,25 +6,7 @@
 #include <limits>
 #include <ostream>
 
-class Transform
-{
-
-public:
-
-    constexpr Transform() 
-    : row_offset(0)
-    , col_offset(0)
-    , turn_count(0)
-    , flip(false)
-    {
-
-    }
-
-    std::size_t row_offset;
-    std::size_t col_offset;
-    std::size_t turn_count;
-    bool flip;
-};
+#include <transform.hpp>
 
 /// @brief
 /// @tparam Ts width and height of the frame 
@@ -43,9 +25,16 @@ public:
 
 public:
 
-    constexpr Frame(uint64_t state) 
+    constexpr Frame()
+    : m_state(0)
     {
-        m_state = state;
+
+    }
+
+    constexpr Frame(uint64_t state) 
+    : m_state(state)
+    {
+
     }
 
     [[nodiscard]]
@@ -117,17 +106,10 @@ public:
     }
 
 
-    /// @brief Calculates equivalent frame with minimal numerical value. Saves the information about the minizing transformation.
-    /// @param row_offset Row offset
-    /// @param col_offset Column offset
-    /// @param trasnform_index Index of the D4 dyhedral group 
-    /// transformation when traversing from original by alternating 
-    /// horizontal/vertical turns and clockwise rotations.
-    /// @return 
-    [[nodiscard]] constexpr Frame<Ts> normalized(
-        std::size_t& min_row_offset,
-        std::size_t& min_col_offset,
-        std::size_t& trasnform_index) const 
+    /// @brief Calculates equivalent frame with minimal numerical value.
+    /// @param trasnform Transform that normalizes this frame.
+    /// @return
+    [[nodiscard]] constexpr Frame<Ts> normalized(Transform &transform) const 
     {
         // I'm not sure how to meaningfully refactor this code.
         // The point is to traverse each node of the Cayley graph
@@ -135,23 +117,22 @@ public:
         // minimal numerical value.
         // This can be done by alternating flips (horizontal and vertical) and turns.
 
-        min_row_offset = 0;
-        min_col_offset = 0;
-        trasnform_index = 0;
-
+        transform = Transform();
         Frame<Ts> min_state(m_state);
+        
         for(std::size_t row_offset = 0; row_offset < Ts; ++row_offset)
         {
             for(std::size_t col_offset = 0; col_offset < Ts; ++col_offset)
             {
+                // TODO: refactor
                 // Identity
                 Frame<Ts> s = this->translated(row_offset, col_offset);
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 0;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 0;
                 }
 
                 // Flip
@@ -159,9 +140,9 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 1;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 1;
                 }
 
                 // Turn 90 + Flipped
@@ -169,9 +150,9 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 2;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 2;
                 }
 
                 // Turn 90
@@ -179,9 +160,9 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 3;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 3;
                 }
 
                 // Turn 180
@@ -189,9 +170,9 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 4;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 4;
                 }
 
                 // Turn 180 + Flip
@@ -199,9 +180,9 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 5;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 5;
                 }
 
                 // Turn 270 + Flip
@@ -209,9 +190,9 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 6;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 6;
                 }
 
                 // Turn 270
@@ -219,9 +200,9 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    min_row_offset = row_offset;
-                    min_col_offset = col_offset;
-                    trasnform_index = 7;
+                    transform.row_offset = row_offset;
+                    transform.col_offset = col_offset;
+                    transform.index = 7;
                 }
             }    
         }
@@ -304,13 +285,14 @@ public:
     }
 
     [[nodiscard]] constexpr Frame<Ts> transformed(
-        std::size_t row_offset, 
-        std::size_t col_offset, 
-        std::size_t transform_index) const
+        const Transform &transform) const
     {
-        Frame<Ts> result = translated(row_offset, col_offset);
+        Frame<Ts> result = translated(
+            transform.row_offset, 
+            transform.col_offset);
 
-        for(size_t i = 1; i < transform_index; ++i)
+        // TODO: refactor
+        for(size_t i = 1; i < transform.index; ++i)
         {
             if (0 == (i - 1) % 4)
                 result = flipped<false>();

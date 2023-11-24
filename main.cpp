@@ -22,17 +22,17 @@ int main(int argc, char** argv)
     // {
     //     Frame<4>(0b1110110000000000)
     // });
-    size_t r, c, i;
+    Transform t;
     Frame<4> frame(55);
-    Frame<4> normalized_frame = frame.normalized(r, c, i);
-    Frame<4> tr = frame.transformed(r, c, i);
+    Frame<4> normalized_frame = frame.normalized(t);
+    Frame<4> tr = frame.transformed(t);
 
     cout << "Original(" << bitset<16>(frame.get()) << ", " << frame.get() << "):\n" << frame << '\n';
     cout << "Normalized(" << bitset<16>(normalized_frame.get()) << ", " << normalized_frame.get() << "):\n" << normalized_frame << '\n';
     cout << "Transofrmed(" << bitset<16>(tr.get()) << ", " << tr.get() << "):\n" << tr << '\n';
-    cout << "Row offset: " << r << '\n';
-    cout << "Col offset: " << c << '\n';
-    cout << "T index: " << i << '\n';
+    cout << "Row offset: " << t.row_offset<< '\n';
+    cout << "Col offset: " << t.col_offset << '\n';
+    cout << "T index: " << t.index << '\n';
 
     // Frame<4> attempt = frame.turned(); //.flipped().turned().flipped().turned();
 
