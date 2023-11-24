@@ -20,25 +20,23 @@ int main(int argc, char** argv)
 {
     // Cycle<4> c(std::vector<Frame<4>>
     // {
-    //     Frame<4>(0b1000100010001000)
+    //     Frame<4>(0b1110110000000000)
     // });
-    Transform t;
-    Frame<4> frame(0b1110110000000000);
-    Frame<4> normalized_frame = frame.normalized(t);
+    size_t r, c, i;
+    Frame<4> frame(55);
+    Frame<4> normalized_frame = frame.normalized(r, c, i);
+    Frame<4> tr = frame.transformed(r, c, i);
 
-    cout << "Original(" << bitset<16>(frame.get()) << "):\n" << frame << '\n';
-    cout << "Normalized(" << bitset<16>(normalized_frame.get()) << "):\n" << normalized_frame << '\n';
+    cout << "Original(" << bitset<16>(frame.get()) << ", " << frame.get() << "):\n" << frame << '\n';
+    cout << "Normalized(" << bitset<16>(normalized_frame.get()) << ", " << normalized_frame.get() << "):\n" << normalized_frame << '\n';
+    cout << "Transofrmed(" << bitset<16>(tr.get()) << ", " << tr.get() << "):\n" << tr << '\n';
+    cout << "Row offset: " << r << '\n';
+    cout << "Col offset: " << c << '\n';
+    cout << "T index: " << i << '\n';
 
-    assert(normalized_frame.get() != 0);
-    assert(t.col_offset == 0);
-    assert(t.row_offset == 0);
-    assert(!t.flip);
-    assert(t.turn_count == 0);
+    // Frame<4> attempt = frame.turned(); //.flipped().turned().flipped().turned();
 
-    cout << "Row offset: " << t.row_offset << '\n';
-    cout << "Col offset: " << t.col_offset << '\n';
-    cout << "Turn count: " << t.turn_count << '\n';
-    cout << "Flip: " << (t.flip ? "true" : "false") << '\n';
+    // cout << "My Attempt(" << bitset<16>(attempt.get()) << ", " << attempt.get() << "):\n" << attempt << '\n';
 
     // constexpr size_t len = 4;
 

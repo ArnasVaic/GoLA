@@ -11,7 +11,7 @@ class Transform
 
 public:
 
-    Transform() 
+    constexpr Transform() 
     : row_offset(0)
     , col_offset(0)
     , turn_count(0)
@@ -105,12 +105,39 @@ public:
     }
 
     [[nodiscard]]
-    constexpr Frame<Ts> normalized(Transform& transform) const 
+    constexpr bool operator > (const Frame<Ts>& rhs) const 
+    {
+        return m_state > rhs.get();
+    }
+
+    [[nodiscard]]
+    constexpr bool operator == (const Frame<Ts>& rhs) const 
+    {
+        return m_state == rhs.get();
+    }
+
+
+    /// @brief Calculates equivalent frame with minimal numerical value. Saves the information about the minizing transformation.
+    /// @param row_offset Row offset
+    /// @param col_offset Column offset
+    /// @param trasnform_index Index of the D4 dyhedral group 
+    /// transformation when traversing from original by alternating 
+    /// horizontal/vertical turns and clockwise rotations.
+    /// @return 
+    [[nodiscard]] constexpr Frame<Ts> normalized(
+        std::size_t& min_row_offset,
+        std::size_t& min_col_offset,
+        std::size_t& trasnform_index) const 
     {
         // I'm not sure how to meaningfully refactor this code.
         // The point is to traverse each node of the Cayley graph
-        // of a dyhedral group D4 without wasting computation.
-        // This can be done by alternating flips and turns.
+        // of a dyhedral group D4 to find the equivalent grid with 
+        // minimal numerical value.
+        // This can be done by alternating flips (horizontal and vertical) and turns.
+
+        min_row_offset = 0;
+        min_col_offset = 0;
+        trasnform_index = 0;
 
         Frame<Ts> min_state(m_state);
         for(std::size_t row_offset = 0; row_offset < Ts; ++row_offset)
@@ -122,87 +149,79 @@ public:
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = false;
-                    transform.turn_count = 0;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 0;
                 }
 
                 // Flip
-                s = s.flipped();
+                s = s.flipped<true>();
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = true;
-                    transform.turn_count = 0;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 1;
                 }
 
                 // Turn 90 + Flipped
-                s = s.turned();
+                s = s.turned<true>();
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = true;
-                    transform.turn_count = 1;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 2;
                 }
 
                 // Turn 90
-                s = s.flipped();
+                s = s.flipped<false>();
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = false;
-                    transform.turn_count = 1;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 3;
                 }
 
                 // Turn 180
-                s = s.turned();
+                s = s.turned<true>();
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = false;
-                    transform.turn_count = 2;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 4;
                 }
 
                 // Turn 180 + Flip
-                s = s.flipped();
+                s = s.flipped<true>();
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = true;
-                    transform.turn_count = 2;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 5;
                 }
 
                 // Turn 270 + Flip
-                s = s.turned();
+                s = s.turned<true>();
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = true;
-                    transform.turn_count = 3;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 6;
                 }
 
                 // Turn 270
-                s = s.flipped();
+                s = s.flipped<false>();
                 if(s < min_state)
                 {
                     min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.flip = false;
-                    transform.turn_count = 3;
+                    min_row_offset = row_offset;
+                    min_col_offset = col_offset;
+                    trasnform_index = 7;
                 }
             }    
         }
@@ -227,41 +246,83 @@ public:
         return result;
     }
 
-    [[nodiscard]]
-    constexpr Frame<Ts> flipped() const
+    /// @brief Flip frame around the horizontal or vertical axis.
+    /// @tparam Th indicator whether to flip around the horizontal (true) or the vertical (false) axis.
+    /// @return Flipped frame.
+    template<bool Th>
+    [[nodiscard]] constexpr Frame<Ts> flipped() const
     {
         uint64_t result = 0;
         for(std::size_t row = 0; row < Ts; ++row)
         {
             for(std::size_t col = 0; col < Ts; ++col)
             {
-                result |= get(row, col) << to_index(row, Ts - col - 1);
+                bool alive;
+
+                if constexpr (Th)
+                {
+                    alive = get(Ts - row - 1, col);
+                }
+                else
+                {
+                    alive = get(row, Ts - col - 1);
+                }
+
+                result |= alive << to_index(row, col);
             }
         }
         return result;
     }
 
-    [[nodiscard]]
-    constexpr Frame<Ts> turned() const
+    /// @brief Turn frame clockwise or counterclockwise
+    /// @tparam Tcw indicator whether to turn clockwise (true) or counterclockwise (false)
+    /// @return Rotated frame
+    template<bool Tcw>
+    [[nodiscard]] constexpr Frame<Ts> turned() const
     {
         uint64_t result = 0;
         for(std::size_t row = 0; row < Ts; ++row)
         {
             for(std::size_t col = 0; col < Ts; ++col)
             {
-                result |= get(Ts - col - 1, row) << to_index(row, col);
+
+                bool alive;
+
+                if constexpr (Tcw)
+                {
+                    alive = get(Ts - col - 1, row);
+                }
+                else
+                {
+                    alive = get(col, Ts - row - 1);
+                }
+
+                result |= alive << to_index(row, col);
             }
         }
         return result;
     }
 
-    constexpr void transform(const Transform& t)
+    [[nodiscard]] constexpr Frame<Ts> transformed(
+        std::size_t row_offset, 
+        std::size_t col_offset, 
+        std::size_t transform_index) const
     {
-        *this = translated(t.row_offset, t.col_offset);
-        for(std::size_t i = 0; i < t.turn_count; ++i)
-            *this = turned();
-        if(t.flip)
-            *this = flipped();
+        Frame<Ts> result = translated(row_offset, col_offset);
+
+        for(size_t i = 1; i < transform_index; ++i)
+        {
+            if (0 == (i - 1) % 4)
+                result = flipped<false>();
+
+            else if (0 == (i + 1) % 4)
+                result = flipped<true>();
+
+            else if(0 == i % 2)
+                result = turned<true>();
+        }
+
+        return result;
     }
 
 private:

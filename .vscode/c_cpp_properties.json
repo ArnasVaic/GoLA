@@ -7,10 +7,10 @@
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",
-            "cppStandard": "c++14",
+            "cppStandard": "c++20",
             "intelliSenseMode": "linux-clang-x64",
             "compilerArgs": [
-                "-std=c++17"
+                "-std=c++20"
             ]
         }
     ],
