@@ -13,6 +13,8 @@ int main(int argc, char** argv)
     constexpr size_t s = 4;
     constexpr size_t total = 1 << s * s;
 
+    GameOfLife<s> game;
+
     unordered_set<Cycle<s>, Cycle<s>::Hash, Cycle<s>::Equal> cycles;
     
     auto start = steady_clock::now();
@@ -72,4 +74,5 @@ int main(int argc, char** argv)
 
         cout << '\n';
     }
+
 }
