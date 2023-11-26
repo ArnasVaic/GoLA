@@ -1,8 +1,8 @@
 #pragma once
 
 #include <set>
+#include <vector>
 #include <cstdint>
-
 #include <frame.hpp>
 
 /// @brief 
@@ -17,7 +17,7 @@ private:
 
 public:
 
-    constexpr Cycle(std::set<Frame<Ts>> frames)
+    constexpr Cycle(const std::vector<Frame<Ts>> &frames)
     {
         m_frames = normalize(frames);
     }
@@ -27,7 +27,7 @@ public:
         return m_frames;
     }
 
-    constexpr static std::set<Frame<Ts>> normalize(std::vector<Frame<Ts>> frames)
+    constexpr static std::set<Frame<Ts>> normalize(const std::vector<Frame<Ts>> &frames)
     {
         if(frames.empty())
             return {};
@@ -46,10 +46,17 @@ public:
             }
         }
 
+        //std::cout << "min frame:\n" << min_frame << '\n';
+        //std::cout << "min t:\n" << min_transform.row_offset << ' ' << min_transform.col_offset << ' ' << min_transform.index << '\n';
+
         std::set<Frame<Ts>> frame_set;
         for (const auto& frame : frames)
-            frame_set.insert(frame.transform(min_transform));
-
+        {
+            Frame<Ts> transformed = frame.transformed(min_transform);
+            //std::cout << transformed.get() << '\n' << transformed << '\n';
+            frame_set.insert(transformed);
+        }
+        
         return frame_set;
     }
 
@@ -57,15 +64,9 @@ public:
     {
         bool operator()(const Cycle<Ts>& lhs, const Cycle<Ts>& rhs) const 
         {
-
-            if(lhs.size() != rhs.size())
-            {
-                return false;
-            }
-
             return lhs.frames() == rhs.frames();
         }
-    }
+    };
 
     struct Hash
     {
@@ -77,10 +78,10 @@ public:
 
             for (const auto& i : cycle.frames()) 
             {
-                seed ^= hasher(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+                seed ^= hasher(i.get()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             }
 
             return seed;
         }
-    }
+    };
 };

@@ -1,126 +1,75 @@
-#include <cstdint>
-#include <assert.h>
-#include <algorithm>
-#include <unordered_map>
-#include <iostream>
-#include <climits>
 #include <chrono>
+#include <iostream>
 #include <unordered_set>
-#include <bit>
-#include <set>
-#include <bitset>
-#include <board.hpp>
-#include <cycle.hpp>
 #include <frame.hpp>
+#include <cycle.hpp>
+#include <game_of_life.hpp>
 
 using namespace std;
 using namespace chrono;
 
 int main(int argc, char** argv)
 {
-    // Cycle<4> c(std::vector<Frame<4>>
-    // {
-    //     Frame<4>(0b1110110000000000)
-    // });
-    Transform t;
-    Frame<4> frame(55);
-    Frame<4> normalized_frame = frame.normalized(t);
-    Frame<4> tr = frame.transformed(t);
+    constexpr size_t s = 4;
+    constexpr size_t total = 1 << s * s;
 
-    cout << "Original(" << bitset<16>(frame.get()) << ", " << frame.get() << "):\n" << frame << '\n';
-    cout << "Normalized(" << bitset<16>(normalized_frame.get()) << ", " << normalized_frame.get() << "):\n" << normalized_frame << '\n';
-    cout << "Transofrmed(" << bitset<16>(tr.get()) << ", " << tr.get() << "):\n" << tr << '\n';
-    cout << "Row offset: " << t.row_offset<< '\n';
-    cout << "Col offset: " << t.col_offset << '\n';
-    cout << "T index: " << t.index << '\n';
-
-    // Frame<4> attempt = frame.turned(); //.flipped().turned().flipped().turned();
-
-    // cout << "My Attempt(" << bitset<16>(attempt.get()) << ", " << attempt.get() << "):\n" << attempt << '\n';
-
-    // constexpr size_t len = 4;
-
-    // Frame<len> f = 0;
-
-    // for(int i = 0; i < 64; ++i)
-    // {
-    //     if(i % 2 == 0)
-    //         f.set(i);
-    // }
-
-    // std::set<Frame<4>> s;
-    // s.insert(Frame<4>(0));
-
-    // Board<len> board;
-
-    // auto start = steady_clock::now();
-    // auto cycles = board.find_unique_non_zero_cycles();
-    // cycles.insert(std::vector<uint64_t>{0});
-    // auto end = steady_clock::now();
-    // auto ms = duration<double, milli>(end - start).count();
+    unordered_set<Cycle<s>, Cycle<s>::Hash, Cycle<s>::Equal> cycles;
     
-    // cout << "total cycles:" << cycles.size() << '\n';
+    auto start = steady_clock::now();
 
-    // vector<uint64_t> c1
-    // {
-    //     0b0101011001000001,
-    //     0b0110001100100101,
-    //     0b0000001100101010,
-    //     0b1000001001101010,
-    //     0b1000001001101010,
-    //     0b1010010011000110,
-    //     0b1011001110000010,
-    //     0b0101010011000000
-    // };
+    std::unordered_map<Frame<s>, size_t, Frame<s>::Hash> visited_frames;
 
-    // vector<uint64_t> c2
-    // {
-    //     0b0100011101100001,
-    //     0b0000101010001001,
-    //     0b0010101011001000,
-    //     0b1011100000101001,
-    //     0b1010110001100100,
-    //     0b0101000001100100,
-    //     0b1100010110001001,
-    //     0b0101000101001100
-    // };
+    for(uint64_t i = 0; i < total; ++i)
+    {
+        game.set(i);
 
-    // Board<len> temp;
-    // for (const auto& cycle : vector<vector<uint64_t>>{c1, c2})
-    // {
-    //     cout << "Cycle\n";
+        visited_frames.insert({ game.frame(), game.generation() });
+    
+        for(;;)
+        {
+            game.evolve();
+            Frame<s> current_frame = game.frame();
 
-    //     for(size_t j = 0; j < cycle.size(); ++j)
-    //     {
-    //         temp.set(cycle[j]);
-    //         //cout << bitset<temp.Total>(state) << '\n';
-    //         cout << temp << '\n';
-    //     }
-    // }
+            if(visited_frames.contains(current_frame))
+            {
+                size_t cycle_begin_generation = visited_frames[current_frame];
+                std::vector<Frame<s>> cycle_frames;
 
-    // cout << VectorU64Equal<4>()(c1, c2) << '\n';
+                for (const auto& [frame, generation] : visited_frames) {
+                    //cout << "generation: " << generation << '\n' << frame << '\n';
+                    if(generation >= cycle_begin_generation)
+                    {
+                        cycle_frames.push_back(frame);
+                    }
+                }
 
-    // unordered_set<vector<uint64_t>, VectorU64Hash, VectorU64Equal<len>> s;
+                Cycle<s> cycle(cycle_frames);
+                cycles.insert(cycle);
 
-    // s.insert(c1);
+                visited_frames.clear();
 
-    // cout << s.contains(c1) << ' ' << s.contains(c2) << '\n';
+                break;
+            }
+            else
+            {
+                visited_frames[current_frame] = game.generation();
+            }
+        }    
+    }
 
-    // s.insert(c2);
+    auto end = steady_clock::now();
+    auto ms = duration<double, milli>(end - start).count();
+    
+    cout << "Program took " << ms << "ms, unique cycles: " << cycles.size() << "\n";
 
-    // cout << s.size() << '\n';
+    for (const auto &cycle : cycles)
+    {
+        cout << "T = " << cycle.frames().size() << '\n';
+        for(const auto &frame : cycle.frames())
+        {
+            cout << frame << '\n';
+        }
 
-    // Board<len> temp;
-    // for (const auto& cycle : cycles)
-    // {
-    //     cout << "Cycle\n";
-
-    //     for(size_t j = 0; j < cycle.size(); ++j)
-    //     {
-    //         auto frame = cycle[j];
-    //         temp.set(frame);
-    //         cout << bitset<temp.Total>(frame) << '\n';
-    //         cout << temp << '\n';
-    //     }
-    // }
+        cout << '\n';
+    }
 }

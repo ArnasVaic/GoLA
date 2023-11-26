@@ -1,10 +1,12 @@
 #pragma once
 
 #include <bit>
-#include <cstdint>
 #include <array>
 #include <limits>
+#include <vector>
+#include <iostream>
 #include <ostream>
+#include <cstdint>
 
 #include <transform.hpp>
 
@@ -84,7 +86,7 @@ public:
     [[nodiscard]]
     constexpr std::size_t neighbour_cnt(std::size_t index) const
     {
-        return std::popcount(neighbour_mask_lookup[index]);
+        return std::popcount(m_state & neighbour_mask_lookup[index]);
     }
 
     [[nodiscard]]
@@ -105,9 +107,16 @@ public:
         return m_state == rhs.get();
     }
 
+    struct Hash
+    {
+        size_t operator()(const Frame<Ts>& frame) const 
+        {
+            return std::hash<uint64_t>()(frame.get());
+        }
+    };
 
     /// @brief Calculates equivalent frame with minimal numerical value.
-    /// @param trasnform Transform that normalizes this frame.
+    /// @param transform Transform that normalizes this frame.
     /// @return
     [[nodiscard]] constexpr Frame<Ts> normalized(Transform &transform) const 
     {
@@ -120,90 +129,109 @@ public:
         transform = Transform();
         Frame<Ts> min_state(m_state);
         
-        for(std::size_t row_offset = 0; row_offset < Ts; ++row_offset)
+        Transform t;
+
+        for(size_t row_offset = 0; row_offset < Ts; ++row_offset)
         {
-            for(std::size_t col_offset = 0; col_offset < Ts; ++col_offset)
+            t.row_offset = row_offset;
+
+            for(size_t col_offset = 0; col_offset < Ts; ++col_offset)
             {
-                // TODO: refactor
-                // Identity
-                Frame<Ts> s = this->translated(row_offset, col_offset);
-                if(s < min_state)
-                {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 0;
-                }
+                t.col_offset = col_offset;
 
-                // Flip
-                s = s.flipped<true>();
-                if(s < min_state)
+                for(size_t i = 0; i < 8; ++i)
                 {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 1;
-                }
+                    t.index = i;
+                    Frame<Ts> tr = transformed(t);
 
-                // Turn 90 + Flipped
-                s = s.turned<true>();
-                if(s < min_state)
-                {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 2;
-                }
+                    //std::cout << "(s,r,c,i)=(" << tr.get() << ", " << t.row_offset << ", " << t.col_offset << ", " << t.index << ")\n" << tr << '\n'; 
 
-                // Turn 90
-                s = s.flipped<false>();
-                if(s < min_state)
-                {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 3;
+                    if(tr < min_state)
+                    {
+                        min_state = tr;
+                        transform = t;
+                    }
                 }
+                // // TODO: refactor
+                // // Identity
+                // Frame<Ts> s = this->translated(row_offset, col_offset);
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 0;
+                // }
 
-                // Turn 180
-                s = s.turned<true>();
-                if(s < min_state)
-                {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 4;
-                }
+                // // Flip
+                // s = s.flipped<true>();
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 1;
+                // }
 
-                // Turn 180 + Flip
-                s = s.flipped<true>();
-                if(s < min_state)
-                {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 5;
-                }
+                // // Turn 90 + Flipped
+                // s = s.turned<true>();
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 2;
+                // }
 
-                // Turn 270 + Flip
-                s = s.turned<true>();
-                if(s < min_state)
-                {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 6;
-                }
+                // // Turn 90
+                // s = s.flipped<false>();
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 3;
+                // }
 
-                // Turn 270
-                s = s.flipped<false>();
-                if(s < min_state)
-                {
-                    min_state = s;
-                    transform.row_offset = row_offset;
-                    transform.col_offset = col_offset;
-                    transform.index = 7;
-                }
+                // // Turn 180
+                // s = s.turned<true>();
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 4;
+                // }
+
+                // // Turn 180 + Flip
+                // s = s.flipped<true>();
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 5;
+                // }
+
+                // // Turn 270 + Flip
+                // s = s.turned<true>();
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 6;
+                // }
+
+                // // Turn 270
+                // s = s.flipped<false>();
+                // if(s < min_state)
+                // {
+                //     min_state = s;
+                //     transform.row_offset = row_offset;
+                //     transform.col_offset = col_offset;
+                //     transform.index = 7;
+                // }
             }    
         }
         return min_state;
@@ -291,19 +319,30 @@ public:
             transform.row_offset, 
             transform.col_offset);
 
+        //std::cout << "I\n" << result << '\n';
+
         // TODO: refactor
-        for(size_t i = 1; i < transform.index; ++i)
+        for(size_t i = 1; i <= transform.index; ++i)
         {
             if (0 == (i - 1) % 4)
-                result = flipped<false>();
+            {
+                result = result.flipped<false>();
+                //std::cout << "V\n" << result << '\n';
+            }   
 
             else if (0 == (i + 1) % 4)
-                result = flipped<true>();
+            {
+                result = result.flipped<true>();
+                //std::cout << "H\n" << result << '\n';
+            }   
 
             else if(0 == i % 2)
-                result = turned<true>();
+            {
+                result = result.turned<true>();
+                //std::cout << "R\n" << result << '\n';
+            }
         }
-
+        
         return result;
     }
 
@@ -313,11 +352,11 @@ private:
     constexpr static uint64_t get_neighbour_mask(std::size_t cell_row, std::size_t cell_col)
     {
         uint64_t mask = 0;
-        for(std::size_t i = -1; i <= 1; ++i)
+        for(int i = -1; i < 2; ++i)
         {
             std::size_t row = (Ts + cell_row + i) % Ts;
 
-            for(std::size_t j = -1; j <= 1; ++j)
+            for(int j = -1; j < 2; ++j)
             {
                 if(i == 0 && j == 0)
                     continue;
@@ -343,7 +382,6 @@ private:
         }
         return table;
     }() };
-
 };
 
 template<std::size_t Ts>
