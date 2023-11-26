@@ -77,4 +77,33 @@ public:
         m_frame = frame;
         m_generation = 0;
     }
+
+    [[nodiscard]] constexpr Cycle<Ts> find_cycle()
+    {
+        std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> visited_frames;
+        visited_frames.insert({ m_frame, m_generation });
+    
+        for(;;)
+        {
+            evolve();
+            if(visited_frames.contains(m_frame))
+            {
+                size_t cycle_begin_generation = visited_frames[m_frame];
+                std::vector<Frame<Ts>> cycle_frames;
+
+                for (const auto& [frame, generation] : visited_frames) {
+                    if(generation >= cycle_begin_generation)
+                    {
+                        cycle_frames.push_back(frame);
+                    }
+                }
+
+                return Cycle<Ts>(cycle_frames);
+            }
+            else
+            {
+                visited_frames[m_frame] = m_generation;
+            }
+        }
+    }
 };

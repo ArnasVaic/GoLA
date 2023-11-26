@@ -83,6 +83,11 @@ public:
         m_state |= 1 << to_index(row, col);
     }
 
+    constexpr void toggle(std::size_t index)
+    {
+        m_state ^= 1 << index;
+    }
+
     [[nodiscard]]
     constexpr std::size_t neighbour_cnt(std::size_t index) const
     {
@@ -152,86 +157,6 @@ public:
                         transform = t;
                     }
                 }
-                // // TODO: refactor
-                // // Identity
-                // Frame<Ts> s = this->translated(row_offset, col_offset);
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 0;
-                // }
-
-                // // Flip
-                // s = s.flipped<true>();
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 1;
-                // }
-
-                // // Turn 90 + Flipped
-                // s = s.turned<true>();
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 2;
-                // }
-
-                // // Turn 90
-                // s = s.flipped<false>();
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 3;
-                // }
-
-                // // Turn 180
-                // s = s.turned<true>();
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 4;
-                // }
-
-                // // Turn 180 + Flip
-                // s = s.flipped<true>();
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 5;
-                // }
-
-                // // Turn 270 + Flip
-                // s = s.turned<true>();
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 6;
-                // }
-
-                // // Turn 270
-                // s = s.flipped<false>();
-                // if(s < min_state)
-                // {
-                //     min_state = s;
-                //     transform.row_offset = row_offset;
-                //     transform.col_offset = col_offset;
-                //     transform.index = 7;
-                // }
             }    
         }
         return min_state;
