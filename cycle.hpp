@@ -85,3 +85,25 @@ public:
         }
     };
 };
+
+template<std::size_t Ts>
+std::ostream& operator<<(std::ostream& os, const Cycle<Ts>& cycle)
+{
+    for(size_t row = 0; row < Ts; ++row)
+    {
+        // print one row of each frame
+
+        for(const auto& frame : cycle.frames())
+        {
+            for(size_t col = 0; col < Ts; ++col)
+            {
+                char ch = frame.get(row, col) ? '#' : '.';
+                os << ch << ' ';
+            }
+            os << "  ";
+        }
+        os << '\n';
+    }
+
+    return os;
+}

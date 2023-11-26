@@ -40,13 +40,8 @@ int main(int argc, char** argv)
 
     for (const auto &cycle : cycles)
     {
-        cout << "T = " << cycle.frames().size() << "idx: " << cycle_indices[cycle] <<  '\n';
-        for(const auto &frame : cycle.frames())
-        {
-            cout << frame << '\n';
-        }
-
-        cout << '\n';
+        cout << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] <<  "]\n";
+        cout << cycle << '\n';
     }
 
     vector<double> p_matrix(cycles.size() * cycles.size(), 0);
@@ -87,8 +82,6 @@ int main(int argc, char** argv)
             p_matrix[index_in_p_matrix] += m / n;
         }
     }
-
-
 
     for(size_t i = 0; i < cycles.size(); ++i)
     {
