@@ -5,9 +5,11 @@
 #include <frame.hpp>
 #include <cycle.hpp>
 #include <game_of_life.hpp>
+#include <Eigen/Dense>
 
 using namespace std;
 using namespace chrono;
+using namespace Eigen;
 
 int main(int argc, char** argv)
 {
@@ -92,4 +94,16 @@ int main(int argc, char** argv)
         cout << '\n';
     }
     cout << '\n';
+
+    MatrixXd matrix(cycles.size(), cycles.size());
+
+    for(size_t i = 0; i < p_matrix.size(); ++i)
+    {
+        matrix(i / cycles.size(), i % cycles.size()) = p_matrix[i];
+    }
+
+    EigenSolver<MatrixXd> solver(matrix);
+    //VectorXd eigenvalues = solver.eigenvalues().real();
+
+    std::cout << solver.eigenvalues() << std::endl;
 }

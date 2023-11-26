@@ -7,6 +7,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/eigen)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Add your source files here
