@@ -1,63 +1,109 @@
-#include <cstdint>
-#include <algorithm>
-#include <unordered_map>
-#include <iostream>
-#include <climits>
 #include <chrono>
+#include <vector>
+#include <iostream>
 #include <unordered_set>
-#include <bit>
-#include <bitset>
-#include <board.h>
+#include <frame.hpp>
+#include <cycle.hpp>
+#include <game_of_life.hpp>
+#include <Eigen/Dense>
 
 using namespace std;
+using namespace chrono;
+using namespace Eigen;
 
 int main(int argc, char** argv)
 {
-    constexpr size_t w = 4, h = 4;
-    Board<w,h> board;
-    unordered_set<uint64_t> stable;
-    unordered_map<size_t, size_t> frequencies;
-
-    auto start = chrono::steady_clock::now();
-    board.find_cycles(stable, frequencies);
-    auto end = chrono::steady_clock::now();
-    auto ms = chrono::duration <double, milli> (end - start).count();
+    constexpr size_t s = 4;
+    GameOfLife<s> game;
+    unordered_set<Cycle<s>, Cycle<s>::Hash, Cycle<s>::Equal> cycles;
     
-    cout << "Program took: " << ms << " ms" << endl;
-    cout << "Board size: " << board.Width << " x " << board.Height << '\n'; 
-    cout << "Total configurations searched: " << (1 << (board.Total)) << endl;
+    auto start = steady_clock::now();
 
-    for (const auto& [period, count] : frequencies)
-        cout << count << " configurations converge to a cycle of " << period << " frames\n";
+    for(uint64_t i = 0; i < (1 << Frame<s>::CellCount); ++i)
+    {
+        game.set(i);
+        cycles.insert(game.find_cycle());   
+    }
 
-    for (auto it = stable.begin(); it != stable.end();) {
-        uint64_t currentElement = *it;
-        bool predicateSatisfied = false;
+    auto end = steady_clock::now();
+    auto ms = duration<double, milli>(end - start).count();
+    
 
-        // Check if there exists another element b such that P(a, b) is satisfied
-        for (uint64_t b : stable) {
-            if (Board<w,h>::is_equivalent(currentElement, b) && b != currentElement) {
-                predicateSatisfied = true;
-                break;
+    unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> cycle_indices;
+
+
+    size_t cycle_index_asignment_index = 0;
+    for(const auto &cycle : cycles)
+    {
+        cycle_indices[cycle] = cycle_index_asignment_index++;
+    }
+
+    cout << "Program took " << ms << "ms, unique cycles: " << cycles.size() << "\n";
+
+    for (const auto &cycle : cycles)
+    {
+        cout << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] <<  "]\n";
+        cout << cycle << '\n';
+    }
+
+    vector<double> p_matrix(cycles.size() * cycles.size(), 0);
+
+    for(const auto& cycle : cycles)
+    {
+        unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> dest_cycles;
+
+        for(const auto& org_frame : cycle.frames())
+        {
+            for(size_t i = 0; i < Frame<s>::CellCount; ++i)
+            {
+                Frame<s> frame = org_frame;
+                frame.toggle(i);
+                game.set(frame);
+                auto c = game.find_cycle();
+
+                if(dest_cycles.contains(c))
+                {
+                    dest_cycles[c]++;
+                }
+                else
+                {
+                    dest_cycles[c] = 1;
+                }
+
             }
         }
 
-        // If the predicate is satisfied, erase the current element
-        if (predicateSatisfied) {
-            it = stable.erase(it);
-        } else {
-            ++it;
+        for(const auto& dest : dest_cycles)
+        {
+            size_t index_in_p_matrix = cycle_indices[dest.first] + cycle_indices[cycle] * cycles.size();
+
+            // dest.second is the number of perturbated configurations that converged
+            // to the cycle dest.first
+            double m = dest.second;
+            double n = cycle.frames().size() * Frame<s>::CellCount;
+            p_matrix[index_in_p_matrix] += m / n;
         }
     }
-    
-    cout << "Unique 1-period states: " << stable.size() << '\n';
-    Board<w,h> temp;
-    for (const auto& state : stable)
+
+    for(size_t i = 0; i < cycles.size(); ++i)
     {
-        temp.set(state);
-        cout << bitset<temp.Total>(state) << '\n';
-        cout << temp << '\n';
+        for(size_t j = 0; j < cycles.size(); ++j)
+        {
+            printf("%4.8f ", p_matrix[j + i * cycles.size()]);
+        }
+        cout << '\n';
+    }
+    cout << '\n';
+
+    MatrixXd matrix(cycles.size(), cycles.size());
+
+    for(size_t i = 0; i < p_matrix.size(); ++i)
+    {
+        matrix(i / cycles.size(), i % cycles.size()) = p_matrix[i];
     }
 
-    //cout << BoardCompare<4, 4>()(0b0010000110000100, 0b0010010010000001) << '\n';
+    EigenSolver<MatrixXd> solver(matrix);
+    //VectorXd eigenvalues = solver.eigenvalues().real();
+
+    std::cout << solver.eigenvalues() << std::endl;
 }
