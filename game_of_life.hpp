@@ -17,6 +17,7 @@ private:
     };
 
     Frame<Ts> m_frame;
+
     size_t m_generation;
 
 public:
@@ -28,7 +29,7 @@ public:
 
     }
 
-    constexpr GameOfLife(Frame<Ts> frame)
+    constexpr GameOfLife(const Frame<Ts> &frame)
     : m_frame(frame)
     , m_generation(0)
     {
@@ -67,7 +68,7 @@ public:
         return m_frame;
     }
 
-    [[nodiscard]] constexpr std::size_t generation() const
+    [[nodiscard]] constexpr size_t generation() const
     {
         return m_generation;
     }
@@ -78,9 +79,10 @@ public:
         m_generation = 0;
     }
 
-    [[nodiscard]] constexpr Cycle<Ts> find_cycle()
+    [[nodiscard]] constexpr Cycle<Ts> find_cycle(
+            std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> &visited_frames,
+            std::vector<Frame<Ts>> &cycle_frames)
     {
-        std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> visited_frames;
         visited_frames.insert({ m_frame, m_generation });
     
         for(;;)
@@ -89,7 +91,6 @@ public:
             if(visited_frames.contains(m_frame))
             {
                 size_t cycle_begin_generation = visited_frames[m_frame];
-                std::vector<Frame<Ts>> cycle_frames;
 
                 for (const auto& [frame, generation] : visited_frames) {
                     if(generation >= cycle_begin_generation)
@@ -97,8 +98,10 @@ public:
                         cycle_frames.push_back(frame);
                     }
                 }
-
-                return Cycle<Ts>(cycle_frames);
+                visited_frames.clear();
+                Cycle<Ts> cycle(cycle_frames);
+                cycle_frames.clear();
+                return cycle;
             }
             else
             {

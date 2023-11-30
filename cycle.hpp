@@ -7,7 +7,7 @@
 
 /// @brief 
 /// @tparam Ts size of the board 
-template <std::size_t Ts>
+template <size_t Ts>
 class Cycle
 {
 
@@ -17,7 +17,7 @@ private:
 
 public:
 
-    constexpr Cycle(const std::vector<Frame<Ts>> &frames)
+    explicit constexpr Cycle(const std::vector<Frame<Ts>> &frames)
     {
         m_frames = normalize(frames);
     }
@@ -34,7 +34,7 @@ public:
 
         Transform min_transform, temp_transform;
 
-        Frame<Ts> min_frame(std::numeric_limits<uint64_t>::max()), normalized(0);
+        Frame<Ts> min_frame(frames[0]), normalized(0);
 
         for (const auto& frame : frames)
         {
@@ -46,14 +46,13 @@ public:
             }
         }
 
-        //std::cout << "min frame:\n" << min_frame << '\n';
-        //std::cout << "min t:\n" << min_transform.row_offset << ' ' << min_transform.col_offset << ' ' << min_transform.index << '\n';
-
         std::set<Frame<Ts>> frame_set;
         for (const auto& frame : frames)
         {
-            Frame<Ts> transformed = frame.transformed(min_transform);
-            //std::cout << transformed.get() << '\n' << transformed << '\n';
+            Frame<Ts> transformed = frame
+                    .translated(min_transform.row_offset, min_transform.col_offset)
+                    .transformed(min_transform.index);
+
             frame_set.insert(transformed);
         }
         
@@ -62,7 +61,7 @@ public:
 
     struct Equal
     {
-        bool operator()(const Cycle<Ts>& lhs, const Cycle<Ts>& rhs) const 
+        [[nodiscard]] constexpr bool operator()(const Cycle<Ts>& lhs, const Cycle<Ts>& rhs) const
         {
             return lhs.frames() == rhs.frames();
         }
@@ -70,7 +69,7 @@ public:
 
     struct Hash
     {
-        size_t operator()(const Cycle<Ts>& cycle) const 
+        [[nodiscard]] constexpr size_t operator()(const Cycle<Ts>& cycle) const
         {
 
             std::hash<uint64_t> hasher;
@@ -86,13 +85,11 @@ public:
     };
 };
 
-template<std::size_t Ts>
+template<size_t Ts>
 std::ostream& operator<<(std::ostream& os, const Cycle<Ts>& cycle)
 {
     for(size_t row = 0; row < Ts; ++row)
     {
-        // print one row of each frame
-
         for(const auto& frame : cycle.frames())
         {
             for(size_t col = 0; col < Ts; ++col)

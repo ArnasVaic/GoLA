@@ -16,13 +16,16 @@ int main(int argc, char** argv)
     constexpr size_t s = 4;
     GameOfLife<s> game;
     unordered_set<Cycle<s>, Cycle<s>::Hash, Cycle<s>::Equal> cycles;
-    
+    unordered_map<Frame<s>, size_t, Frame<s>::Hash> visited_frames;
+    vector<Frame<s>> cycle_frames;
+
     auto start = steady_clock::now();
 
     for(uint64_t i = 0; i < (1 << Frame<s>::CellCount); ++i)
     {
-        game.set(i);
-        cycles.insert(game.find_cycle());   
+        game.set(Frame<s>(i));
+        const auto cycle = game.find_cycle(visited_frames, cycle_frames);
+        cycles.insert(cycle);
     }
 
     auto end = steady_clock::now();
@@ -32,18 +35,24 @@ int main(int argc, char** argv)
     unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> cycle_indices;
 
 
-    size_t cycle_index_asignment_index = 0;
+    size_t cycle_index_assignment_index = 0;
     for(const auto &cycle : cycles)
     {
-        cycle_indices[cycle] = cycle_index_asignment_index++;
+        cycle_indices[cycle] = cycle_index_assignment_index++;
     }
 
     cout << "Program took " << ms << "ms, unique cycles: " << cycles.size() << "\n";
 
     for (const auto &cycle : cycles)
     {
-        cout << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] <<  "]\n";
-        cout << cycle << '\n';
+        cout << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
+
+        for(const auto &frame : cycle.frames())
+        {
+            cout << frame.get() << ' ';
+        }
+
+        cout << '\n' << cycle << '\n';
     }
 
     vector<double> p_matrix(cycles.size() * cycles.size(), 0);
@@ -59,7 +68,7 @@ int main(int argc, char** argv)
                 Frame<s> frame = org_frame;
                 frame.toggle(i);
                 game.set(frame);
-                auto c = game.find_cycle();
+                auto c = game.find_cycle(visited_frames, cycle_frames);
 
                 if(dest_cycles.contains(c))
                 {
@@ -77,7 +86,7 @@ int main(int argc, char** argv)
         {
             size_t index_in_p_matrix = cycle_indices[dest.first] + cycle_indices[cycle] * cycles.size();
 
-            // dest.second is the number of perturbated configurations that converged
+            // dest.second is the number of perturbed configurations that converged
             // to the cycle dest.first
             double m = dest.second;
             double n = cycle.frames().size() * Frame<s>::CellCount;
@@ -104,6 +113,5 @@ int main(int argc, char** argv)
 
     EigenSolver<MatrixXd> solver(matrix);
     //VectorXd eigenvalues = solver.eigenvalues().real();
-
-    std::cout << solver.eigenvalues() << std::endl;
+    cout << solver.eigenvalues() << endl;
 }

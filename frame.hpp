@@ -7,15 +7,15 @@
 #include <iostream>
 #include <ostream>
 #include <cstdint>
-
 #include <transform.hpp>
+#include <unordered_map>
+#include <functional>
 
 /// @brief
 /// @tparam Ts width and height of the frame 
-template <std::size_t Ts>
+template <size_t Ts>
 requires(Ts <= 8)
-class Frame 
-{
+class Frame {
 
 private:
 
@@ -23,296 +23,356 @@ private:
 
 public:
 
-    constexpr static std::size_t CellCount = Ts * Ts;
+    constexpr static size_t SquareSymmetries = 8;
+
+    constexpr static size_t CellCount = Ts * Ts;
 
 public:
 
     constexpr Frame()
-    : m_state(0)
-    {
+        : m_state(0)
+    { }
 
-    }
+    explicit constexpr Frame(uint64_t state)
+        : m_state(state)
+    { }
 
-    constexpr Frame(uint64_t state) 
-    : m_state(state)
-    {
-
-    }
-
-    [[nodiscard]]
-    constexpr static std::size_t to_index(std::size_t row, std::size_t col)
-    {
+    [[nodiscard]] constexpr static size_t to_index(size_t row, size_t col) {
         return col + row * Ts;
     }
 
-    [[nodiscard]]
-    constexpr uint64_t get() const
-    {
+    [[nodiscard]] constexpr uint64_t get() const {
         return m_state;
     }
 
-    [[nodiscard]]
-    constexpr bool get(std::size_t index) const
-    {
+    [[nodiscard]] constexpr bool get(size_t index) const {
         return m_state & (1 << index);
     }
 
-    [[nodiscard]]
-    constexpr bool get(std::size_t row, std::size_t col) const
-    {
-        return m_state & (1 << to_index(row, col));
+    [[nodiscard]] constexpr bool get(size_t row, size_t col) const {
+        return m_state & (1 << index_lookup[row][col]);
     }
 
-    constexpr void set(std::size_t index)
-    {
+    constexpr void set(size_t index) {
         m_state |= 1 << index;
     }
 
-    constexpr void set(std::size_t index, bool value)
-    {
+    constexpr void set(size_t index, bool value) {
         m_state |= value << index;
     }
 
-    constexpr void set(std::size_t row, std::size_t col, bool value)
-    {
-        m_state |= value << to_index(row, col);
+    constexpr void set(size_t row, size_t col, bool value) {
+        m_state |= value << index_lookup[row][col];
     }
 
-    constexpr void set(std::size_t row, std::size_t col)
-    {
-        m_state |= 1 << to_index(row, col);
+    constexpr void set(size_t row, size_t col) {
+        m_state |= 1 << index_lookup[row][col];
     }
 
-    constexpr void toggle(std::size_t index)
-    {
+    constexpr void toggle(size_t index) {
         m_state ^= 1 << index;
     }
 
-    [[nodiscard]]
-    constexpr std::size_t neighbour_cnt(std::size_t index) const
-    {
+    [[nodiscard]] constexpr size_t neighbour_cnt(size_t index) const {
         return std::popcount(m_state & neighbour_mask_lookup[index]);
     }
 
-    [[nodiscard]]
-    constexpr bool operator < (const Frame<Ts>& rhs) const 
-    {
+    [[nodiscard]] constexpr bool operator<(const Frame<Ts> &rhs) const {
         return m_state < rhs.get();
     }
 
-    [[nodiscard]]
-    constexpr bool operator > (const Frame<Ts>& rhs) const 
-    {
+    [[nodiscard]] constexpr bool operator>(const Frame<Ts> &rhs) const {
         return m_state > rhs.get();
     }
 
-    [[nodiscard]]
-    constexpr bool operator == (const Frame<Ts>& rhs) const 
-    {
+    [[nodiscard]] constexpr bool operator==(const Frame<Ts> &rhs) const {
         return m_state == rhs.get();
     }
 
-    struct Hash
-    {
-        size_t operator()(const Frame<Ts>& frame) const 
-        {
+    struct Hash {
+        size_t operator()(const Frame<Ts> &frame) const {
             return std::hash<uint64_t>()(frame.get());
         }
     };
 
-    /// @brief Calculates equivalent frame with minimal numerical value.
-    /// @param transform Transform that normalizes this frame.
-    /// @return
-    [[nodiscard]] constexpr Frame<Ts> normalized(Transform &transform) const 
-    {
-        // I'm not sure how to meaningfully refactor this code.
-        // The point is to traverse each node of the Cayley graph
-        // of a dyhedral group D4 to find the equivalent grid with 
-        // minimal numerical value.
-        // This can be done by alternating flips (horizontal and vertical) and turns.
-
-        transform = Transform();
+    /// @brief Retrieve normalized frame.
+    /// @param min_transform Transform that normalizes this frame.
+    /// @return Equivalent frame with minimal numerical value.
+    [[nodiscard]] constexpr Frame<Ts> normalized(Transform &min_transform) const {
+        min_transform = Transform();
         Frame<Ts> min_state(m_state);
-        
-        Transform t;
+        for (size_t row_offset = 0; row_offset < Ts; ++row_offset) {
+            for (size_t col_offset = 0; col_offset < Ts; ++col_offset) {
 
-        for(size_t row_offset = 0; row_offset < Ts; ++row_offset)
-        {
-            t.row_offset = row_offset;
+                const Frame<Ts> translated = this->translated(row_offset, col_offset);
 
-            for(size_t col_offset = 0; col_offset < Ts; ++col_offset)
-            {
-                t.col_offset = col_offset;
-
-                for(size_t i = 0; i < 8; ++i)
-                {
-                    t.index = i;
-                    Frame<Ts> tr = transformed(t);
-
-                    //std::cout << "(s,r,c,i)=(" << tr.get() << ", " << t.row_offset << ", " << t.col_offset << ", " << t.index << ")\n" << tr << '\n'; 
-
-                    if(tr < min_state)
-                    {
-                        min_state = tr;
-                        transform = t;
-                    }
+                Frame<Ts> transformed = translated;
+                if (transformed < min_state) {
+                    min_state = translated;
+                    min_transform = {row_offset, col_offset, 0};
                 }
-            }    
+
+                transformed = translated.transformed<1>();
+
+                if (transformed < min_state) {
+                    min_state = transformed;
+                    min_transform = {row_offset, col_offset, 1};
+                }
+
+                transformed = translated.transformed<2>();
+
+                if (transformed < min_state) {
+                    min_state = transformed;
+                    min_transform = {row_offset, col_offset, 2};
+                }
+
+                transformed = translated.transformed<3>();
+
+                if (transformed < min_state) {
+                    min_state = transformed;
+                    min_transform = {row_offset, col_offset, 3};
+                }
+
+                transformed = translated.transformed<4>();
+
+                if (transformed < min_state) {
+                    min_state = transformed;
+                    min_transform = {row_offset, col_offset, 4};
+                }
+
+                transformed = translated.transformed<5>();
+
+                if (transformed < min_state) {
+                    min_state = transformed;
+                    min_transform = {row_offset, col_offset, 5};
+                }
+
+                transformed = translated.transformed<6>();
+
+                if (transformed < min_state) {
+                    min_state = transformed;
+                    min_transform = {row_offset, col_offset, 6};
+                }
+
+                transformed = translated.transformed<7>();
+
+                if (transformed < min_state) {
+                    min_state = transformed;
+                    min_transform = {row_offset, col_offset, 7};
+                }
+            }
         }
         return min_state;
     }
 
-    [[nodiscard]]
-    constexpr Frame<Ts> translated(std::size_t row_offset, std::size_t col_offset) const
-    {
-        uint64_t result = 0;
-
-        for(std::size_t row = 0; row < Ts; ++row)
-        {
-            for(std::size_t col = 0; col < Ts; ++col)
-            {
-                std::size_t new_row = (row + row_offset) % Ts;
-                std::size_t new_col = (col + col_offset) % Ts;
-                result |= get(row, col) << to_index(new_row, new_col);
+    [[nodiscard]] constexpr Frame<Ts> translated(size_t row_offset, size_t col_offset) const {
+        Frame<Ts> result;
+        for (size_t row = 0; row < Ts; ++row) {
+            const size_t new_row = (row + row_offset) % Ts;
+            for (size_t col = 0; col < Ts; ++col) {
+                const size_t new_col = (col + col_offset) % Ts;
+                result.set(row, col, get(new_row, new_col));
             }
         }
-
         return result;
     }
 
-    /// @brief Flip frame around the horizontal or vertical axis.
-    /// @tparam Th indicator whether to flip around the horizontal (true) or the vertical (false) axis.
+    /// @brief Flip frame.
+    /// @tparam Horizontal indicator whether to flip around the horizontal axis.
+    /// @tparam Vertical indicator whether to flip around the vertical axis.
     /// @return Flipped frame.
-    template<bool Th>
-    [[nodiscard]] constexpr Frame<Ts> flipped() const
-    {
-        uint64_t result = 0;
-        for(std::size_t row = 0; row < Ts; ++row)
-        {
-            for(std::size_t col = 0; col < Ts; ++col)
-            {
-                bool alive;
+    template<bool Horizontal, bool Vertical>
+    [[nodiscard]] constexpr Frame<Ts> flipped() const {
+        if constexpr (!Horizontal && !Vertical)
+            return get();
 
-                if constexpr (Th)
-                {
-                    alive = get(Ts - row - 1, col);
-                }
+        Frame<Ts> result;
+        bool cell_value;
+        for (size_t row = 0; row < Ts; ++row) {
+            for (size_t col = 0; col < Ts; ++col) {
+                if (Horizontal && !Vertical)
+                    cell_value = get(Ts - 1 - row, col);
+
+                else if (!Horizontal && Vertical)
+                    cell_value = get(row, Ts - col - 1);
+
+                else // Both are true
+                    cell_value = get(Ts - 1 - row, Ts - col - 1);
+
+                result.set(row, col, cell_value);
+            }
+        }
+        return Frame<Ts>(result);
+    }
+
+    /// @brief Transposes the frame.
+    /// @tparam Anti Indicator whether to transpose about anti-diagonal (true) or the main diagonal (false).
+    /// @return Transposed frame.
+    template<bool Anti>
+    [[nodiscard]] constexpr Frame<Ts> transposed() const {
+        Frame<Ts> result;
+        bool cell_value;
+        for (size_t row = 0; row < Ts; ++row) {
+            for (size_t col = 0; col < Ts; ++col) {
+                if constexpr (Anti)
+                    cell_value = get(Ts - 1 - col, Ts - 1 - row);
+
                 else
-                {
-                    alive = get(row, Ts - col - 1);
-                }
+                    cell_value = get(col, row);
 
-                result |= alive << to_index(row, col);
+                result.set(row, col, cell_value);
             }
         }
         return result;
     }
 
-    /// @brief Turn frame clockwise or counterclockwise
-    /// @tparam Tcw indicator whether to turn clockwise (true) or counterclockwise (false)
+    /// @brief Rotate frame
+    /// @tparam Tcw Indicator whether to rotate clockwise (true) or counterclockwise (false)
     /// @return Rotated frame
     template<bool Tcw>
-    [[nodiscard]] constexpr Frame<Ts> turned() const
-    {
-        uint64_t result = 0;
-        for(std::size_t row = 0; row < Ts; ++row)
-        {
-            for(std::size_t col = 0; col < Ts; ++col)
-            {
-
-                bool alive;
-
+    [[nodiscard]] constexpr Frame<Ts> rotated() const {
+        Frame<Ts> result;
+        bool cell_value;
+        for (size_t row = 0; row < Ts; ++row) {
+            for (size_t col = 0; col < Ts; ++col) {
                 if constexpr (Tcw)
-                {
-                    alive = get(Ts - col - 1, row);
-                }
-                else
-                {
-                    alive = get(col, Ts - row - 1);
-                }
+                    cell_value = get(Ts - 1 - col , row);
 
-                result |= alive << to_index(row, col);
+                else
+                    cell_value = get(col, Ts - 1 - row );
+
+                result.set(row, col, cell_value);
             }
         }
         return result;
     }
 
-    [[nodiscard]] constexpr Frame<Ts> transformed(
-        const Transform &transform) const
-    {
-        Frame<Ts> result = translated(
-            transform.row_offset, 
-            transform.col_offset);
-
-        //std::cout << "I\n" << result << '\n';
-
-        // TODO: refactor
-        for(size_t i = 1; i <= transform.index; ++i)
-        {
-            if (0 == (i - 1) % 4)
-            {
-                result = result.flipped<false>();
-                //std::cout << "V\n" << result << '\n';
-            }   
-
-            else if (0 == (i + 1) % 4)
-            {
-                result = result.flipped<true>();
-                //std::cout << "H\n" << result << '\n';
-            }   
-
-            else if(0 == i % 2)
-            {
-                result = result.turned<true>();
-                //std::cout << "R\n" << result << '\n';
-            }
+    /// @brief Transform frame.
+    /// @tparam Tid Index of the D4 group Cayley table node.
+    /// Legend:
+    /// I - identity transform,
+    /// R - clockwise rotation of 90 degrees,
+    /// V - flip about vertical axis,
+    /// H - flip about horizontal axis
+    ///
+    /// Nodes are indexed like the following:
+    /// 0 - I
+    /// 1 - V
+    /// 2 - VR
+    /// 3 - R
+    /// 4 - RR
+    /// 5 - H
+    /// 6 - HR
+    /// 7 - RRR
+    /// @return Transformed frame.
+    template<size_t Tid>
+    requires(Tid < 8)
+    [[nodiscard]] constexpr Frame<Ts> transformed() const {
+        if constexpr (0 == Tid) {
+            return Frame<Ts>(get());
+        } else if (1 == Tid) {
+            return flipped<false, true>();
+        } else if (2 == Tid) {
+            return transposed<true>();
+        } else if (3 == Tid) {
+            return rotated<true>();
+        } else if (4 == Tid) {
+            return flipped<true, true>();
+        } else if (5 == Tid) {
+            return flipped<true, false>();
+        } else if (6 == Tid) {
+            return transposed<false>();
+        } else if (7 == Tid) {
+            return rotated<false>();
         }
-        
-        return result;
+    }
+
+    /// @brief Transform frame.
+    /// @param transform_index Index of the D4 group Cayley table node.
+    /// Legend:
+    /// I - identity transform,
+    /// R - clockwise rotation of 90 degrees,
+    /// V - flip about vertical axis,
+    /// H - flip about horizontal axis
+    ///
+    /// Nodes are indexed like the following:
+    /// 0 - I
+    /// 1 - V
+    /// 2 - VR
+    /// 3 - R
+    /// 4 - RR
+    /// 5 - H
+    /// 6 - HR
+    /// 7 - RRR
+    /// @return Transformed frame.
+    [[nodiscard]] constexpr Frame<Ts> transformed(size_t transform_index) const {
+        if (0 == transform_index) {
+            return Frame<Ts>(get());
+        } else if (1 == transform_index) {
+            return flipped<false, true>();
+        } else if (2 == transform_index) {
+            return transposed<true>();
+        } else if (3 == transform_index) {
+            return rotated<true>();
+        } else if (4 == transform_index) {
+            return flipped<true, true>();
+        } else if (5 == transform_index) {
+            return flipped<true, false>();
+        } else if (6 == transform_index) {
+            return transposed<false>();
+        } else if (7 == transform_index) {
+            return rotated<false>();
+        }
     }
 
 private:
 
     [[nodiscard]]
-    constexpr static uint64_t get_neighbour_mask(std::size_t cell_row, std::size_t cell_col)
-    {
+    constexpr static uint64_t get_neighbour_mask(size_t cell_row, size_t cell_col) {
         uint64_t mask = 0;
-        for(int i = -1; i < 2; ++i)
-        {
-            std::size_t row = (Ts + cell_row + i) % Ts;
+        for (int i = -1; i < 2; ++i) {
+            size_t row = (Ts + cell_row + i) % Ts;
 
-            for(int j = -1; j < 2; ++j)
-            {
-                if(i == 0 && j == 0)
+            for (int j = -1; j < 2; ++j) {
+                if (i == 0 && j == 0)
                     continue;
 
-                std::size_t col = (Ts + cell_col + j) % Ts;
+                size_t col = (Ts + cell_col + j) % Ts;
 
-                mask |= 1 << to_index(row, col);
+                mask |= 1 << index_lookup[row][col];
             }
         }
         return mask;
     }
 
-    constexpr static std::array<uint64_t, CellCount> neighbour_mask_lookup = { []() constexpr 
-    {
-        std::array<uint64_t, CellCount> table {};
-        for (std::size_t row = 0; row < Ts; ++row)
-        {
-            for (std::size_t col = 0; col < Ts; ++col)
-            {
+    constexpr static std::array<uint64_t, CellCount> neighbour_mask_lookup = {[]() constexpr {
+        std::array<uint64_t, CellCount> table{};
+        for (size_t row = 0; row < Ts; ++row) {
+            for (size_t col = 0; col < Ts; ++col) {
                 auto index = to_index(row, col);
                 table[index] = get_neighbour_mask(row, col);
             }
         }
         return table;
-    }() };
+    }()};
+
+    constexpr static std::array<std::array<size_t, Ts>, Ts> index_lookup = {[]() constexpr {
+        std::array<std::array<size_t, Ts>, Ts> table{};
+
+        for (size_t row = 0; row < Ts; ++row) {
+            for (size_t col = 0; col < Ts; ++col) {
+                table[row][col] = to_index(row, col);
+            }
+        }
+
+        return table;
+    }()};
 };
 
-template<std::size_t Ts>
+template<size_t Ts>
 std::ostream& operator<<(std::ostream& os, const Frame<Ts>& frame)
 {
-    for(int i = 0; i < frame.CellCount; ++i)
+    for(size_t i = 0; i < frame.CellCount; ++i)
     {
         os << (frame.get(i) ? '#' : '.') << ' ';
 
