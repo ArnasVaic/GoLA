@@ -43,17 +43,8 @@ public:
         {
             size_t n = m_frame.neighbour_cnt(i);
             bool alive = m_frame.get(i);
-
-            // std:: cout << n;
-
-            // if((i + 1) % Ts == 0)
-            //     std::cout << '\n';
-
             next.set(i, alive_lookup[alive][n]);
         }
-
-        //std::cout << '\n';
-
         return next;
     }
 
@@ -79,9 +70,8 @@ public:
         m_generation = 0;
     }
 
-    [[nodiscard]] constexpr Cycle<Ts> find_cycle(
-            std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> &visited_frames,
-            std::vector<Frame<Ts>> &cycle_frames)
+    [[nodiscard]] constexpr Frame<Ts> find_cycle(
+        std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> &visited_frames)
     {
         visited_frames.insert({ m_frame, m_generation });
     
@@ -90,18 +80,8 @@ public:
             evolve();
             if(visited_frames.contains(m_frame))
             {
-                size_t cycle_begin_generation = visited_frames[m_frame];
-
-                for (const auto& [frame, generation] : visited_frames) {
-                    if(generation >= cycle_begin_generation)
-                    {
-                        cycle_frames.push_back(frame);
-                    }
-                }
                 visited_frames.clear();
-                Cycle<Ts> cycle(cycle_frames);
-                cycle_frames.clear();
-                return cycle;
+                return m_frame.normalized();
             }
             else
             {
