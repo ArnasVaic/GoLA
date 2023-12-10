@@ -46,15 +46,15 @@ public:
     }
 
     [[nodiscard]] constexpr bool get(size_t index) const {
-        return m_state & (1 << index);
+        return m_state & (1ull << index);
     }
 
     [[nodiscard]] constexpr bool get(size_t row, size_t col) const {
-        return m_state & (1 << index_lookup[row][col]);
+        return m_state & (1ull << index_lookup[row][col]);
     }
 
     constexpr void set(size_t index) {
-        m_state |= 1 << index;
+        m_state |= 1ull << index;
     }
 
     constexpr void set(size_t index, bool value) {
@@ -66,11 +66,11 @@ public:
     }
 
     constexpr void set(size_t row, size_t col) {
-        m_state |= 1 << index_lookup[row][col];
+        m_state |= 1ull << index_lookup[row][col];
     }
 
     constexpr void toggle(size_t index) {
-        m_state ^= 1 << index;
+        m_state ^= 1ull << index;
     }
 
     [[nodiscard]] constexpr size_t neighbour_cnt(size_t index) const {
@@ -339,7 +339,7 @@ private:
 
                 size_t col = (Ts + cell_col + j) % Ts;
 
-                mask |= 1 << index_lookup[row][col];
+                mask |= 1ull << index_lookup[row][col];
             }
         }
         return mask;

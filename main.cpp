@@ -2,10 +2,13 @@
 #include <vector>
 #include <iostream>
 #include <unordered_set>
+#include <fstream>
 #include <frame.hpp>
 #include <cycle.hpp>
 #include <game_of_life.hpp>
 #include <Eigen/Dense>
+#include <random>
+#include <iomanip>
 
 using namespace std;
 using namespace chrono;
@@ -13,7 +16,7 @@ using namespace Eigen;
 
 int main(int argc, char** argv)
 {
-    constexpr size_t s = 4;
+    constexpr size_t s = 3;
     GameOfLife<s> game;
     unordered_set<Cycle<s>, Cycle<s>::Hash, Cycle<s>::Equal> cycles;
     unordered_map<Frame<s>, size_t, Frame<s>::Hash> visited_frames;
@@ -21,7 +24,7 @@ int main(int argc, char** argv)
 
     auto start = steady_clock::now();
 
-    for(uint64_t i = 0; i < (1 << Frame<s>::CellCount); ++i)
+    for(uint64_t i = 0; i < (1ull << Frame<s>::CellCount); ++i)
     {
         game.set(Frame<s>(i));
         const auto cycle = game.find_cycle(visited_frames, cycle_frames);
@@ -41,18 +44,32 @@ int main(int argc, char** argv)
         cycle_indices[cycle] = cycle_index_assignment_index++;
     }
 
-    cout << "Program took " << ms << "ms, unique cycles: " << cycles.size() << "\n";
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(1000, 9999);
+
+    string filename = "s" + to_string(s) + "-" + to_string(dis(gen)) + ".txt";
+
+    ofstream os(filename);
+
+    if(!os.is_open())
+    {
+        cout << "Could not output input file: " << filename << '\n';
+        return 0;
+    }
+
+    os << "Program took " << ms << "ms, unique cycles: " << cycles.size() << "\n";
 
     for (const auto &cycle : cycles)
     {
-        cout << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
+        os << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
 
         for(const auto &frame : cycle.frames())
         {
-            cout << frame.get() << ' ';
+            os << frame.get() << ' ';
         }
 
-        cout << '\n' << cycle << '\n';
+        os << '\n' << cycle << '\n';
     }
 
     vector<double> p_matrix(cycles.size() * cycles.size(), 0);
@@ -98,11 +115,11 @@ int main(int argc, char** argv)
     {
         for(size_t j = 0; j < cycles.size(); ++j)
         {
-            printf("%4.8f ", p_matrix[j + i * cycles.size()]);
+            os << setw(9) << setprecision(8) << fixed << p_matrix[j + i * cycles.size()] << ' ';
         }
-        cout << '\n';
+        os << '\n';
     }
-    cout << '\n';
+    os << '\n';
 
     MatrixXd matrix(cycles.size(), cycles.size());
 
@@ -113,5 +130,7 @@ int main(int argc, char** argv)
 
     EigenSolver<MatrixXd> solver(matrix);
     //VectorXd eigenvalues = solver.eigenvalues().real();
-    cout << solver.eigenvalues() << endl;
+    os << solver.eigenvalues() << endl;
+
+    os.close();
 }
