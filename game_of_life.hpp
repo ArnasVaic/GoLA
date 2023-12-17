@@ -109,4 +109,70 @@ public:
             }
         }
     }
+
+    std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> find_cycles(
+        size_t samples,
+        size_t sample_length)
+    {
+        // Reuse containers to avoid instantiation.
+
+        // Used as a lookup to check if frame has been visited
+        std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> visited_frames;
+
+        // Cycle frames are accumulated.
+        std::vector<Frame<Ts>> cycle_frames;
+
+        // Resulting cycles
+        std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> cycles;
+
+        const size_t space_length = Frame<Ts>::States / samples - sample_length;
+
+        // Sample evenly spaced intervals
+        for(size_t sample_index = 0; sample_index < samples; ++sample_index)
+        {
+            const uint64_t start_state = space_length + sample_index * (space_length + sample_length);
+
+            for(uint64_t state = start_state; state < start_state + sample_length; ++state)
+            {
+                set(Frame<Ts>(state));
+                const auto cycle = find_cycle(visited_frames, cycle_frames);
+                cycles.insert(cycle);
+            }
+        }
+
+        return cycles;
+    }
+
+    std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> search_perturbed(
+        std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> cycles)
+    {
+        // Reuse containers to avoid instantiation.
+        // Used as a lookup to check if frame has been visited
+        std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> visited_frames;
+        // Cycle frames are accumulated.
+        std::vector<Frame<Ts>> cycle_frames;
+        // Given cycles + cycles that were found by perturbing each frame from given cycles
+        std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> total_cycles;
+
+        // Copy existing cycles
+        for (auto const& cycle : cycles)
+            total_cycles.insert(cycle);
+
+        for (auto const& cycle : cycles)
+        {
+            for(const auto& org_frame : cycle.frames())
+            {
+                for(size_t i = 0; i < Frame<Ts>::CellCount; ++i)
+                {
+                    Frame<Ts> frame = org_frame;
+                    frame.toggle(i);
+                    set(frame);
+                    auto perturbed_cycle = find_cycle(visited_frames, cycle_frames);
+                    total_cycles.insert(perturbed_cycle);
+                }
+            }
+        }
+
+        return total_cycles;
+    }
 };

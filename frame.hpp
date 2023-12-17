@@ -23,9 +23,9 @@ private:
 
 public:
 
-    constexpr static size_t SquareSymmetries = 8;
-
     constexpr static size_t CellCount = Ts * Ts;
+
+    constexpr static size_t States = 1ull << CellCount;
 
 public:
 
