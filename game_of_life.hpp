@@ -41,15 +41,16 @@ public:
         Frame<Ts> next;
         for(size_t i = 0; i < Frame<Ts>::CellCount; ++i)
         {
-            size_t n = m_frame.neighbour_cnt(i);
-            bool alive = m_frame.get(i);
+            const size_t n = m_frame.neighbour_cnt(i);
+            const bool alive = m_frame.get(i);
 
-            // std:: cout << n;
+            //std:: cout << n;
 
-            // if((i + 1) % Ts == 0)
-            //     std::cout << '\n';
+            //if((i + 1) % Ts == 0)
+                //std::cout << '\n';
+            const bool a = alive_lookup[alive][n];
 
-            next.set(i, alive_lookup[alive][n]);
+            next.set(i, a);
         }
 
         //std::cout << '\n';

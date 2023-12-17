@@ -16,54 +16,64 @@ using namespace Eigen;
 
 int main(int argc, char** argv)
 {
-
     constexpr size_t s = 6;
-
     GameOfLife<s> game;
 
+//    game.set(Frame<s>(6831));
+//
+//    // Reuse containers to avoid instantiation.
+//
+//    // Used as a lookup to check if frame has been visited
+//    std::unordered_map<Frame<s>, size_t, Frame<s>::Hash> visited_frames;
+//
+//    // Cycle frames are accumulated.
+//    std::vector<Frame<s>> cycle_frames;
+//
+//    auto c = game.find_cycle(visited_frames, cycle_frames);
+//
+//    cout << c << '\n';
 
+    auto cycles = game.find_cycles(512, 10);
+    //cycles = game.search_perturbed(cycles);
 
-//    auto cycles = game.find_cycles(512, 1000);
-//    //cycles = game.search_perturbed(cycles);
-//
-//    cout << "Cycles found: " << cycles.size() << '\n';
-//
-//    auto start = steady_clock::now();
-//    auto end = steady_clock::now();
-//    auto ms = duration<double, milli>(end - start).count();
-//
-//    random_device rd;
-//    mt19937 gen(rd());
-//    uniform_int_distribution<> dis(1000, 9999);
-//
-//    string filename = "s" + to_string(s) + "-" + to_string(dis(gen)) + ".txt";
-//
-//    ofstream os(filename);
-//
-//    if(!os.is_open())
-//    {
-//        cout << "Could not output input file: " << filename << '\n';
-//        return 0;
-//    }
-//
-//    unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> cycle_indices;
-//    size_t cycle_index_assignment_index = 0;
-//    for(const auto &cycle : cycles)
-//    {
-//        cycle_indices[cycle] = cycle_index_assignment_index++;
-//    }
-//
-//    for (const auto &cycle : cycles)
-//    {
-//        os << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
-//
-//        for(const auto &frame : cycle.frames())
-//        {
-//            os << frame.get() << ' ';
-//        }
-//
-//        os << '\n' << cycle << '\n';
-//    }
+    cout << "Cycles found: " << cycles.size() << '\n';
+
+    auto start = steady_clock::now();
+    auto end = steady_clock::now();
+    auto ms = duration<double, milli>(end - start).count();
+
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(1000, 9999);
+
+    string filename = "s" + to_string(s) + "-" + to_string(dis(gen)) + ".txt";
+
+    ofstream os(filename);
+
+    if(!os.is_open())
+    {
+        cout << "Could not output input file: " << filename << '\n';
+        return 0;
+    }
+
+    unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> cycle_indices;
+    size_t cycle_index_assignment_index = 0;
+    for(const auto &cycle : cycles)
+    {
+        cycle_indices[cycle] = cycle_index_assignment_index++;
+    }
+
+    for (const auto &cycle : cycles)
+    {
+        os << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
+
+        for(const auto &frame : cycle.frames())
+        {
+            os << frame.get() << ' ';
+        }
+
+        os << '\n' << cycle << '\n';
+    }
 
 //    vector<double> p_matrix(cycles.size() * cycles.size(), 0);
 //    // Reuse containers to avoid instantiation.
@@ -121,6 +131,6 @@ int main(int argc, char** argv)
 //
 //    EigenSolver<MatrixXd> solver(matrix);
 //    os << solver.eigenvalues() << endl;
-
-    os.close();
+//
+//    os.close();
 }
