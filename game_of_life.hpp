@@ -131,7 +131,7 @@ public:
         // Sample evenly spaced intervals
         for(size_t sample_index = 0; sample_index < samples; ++sample_index)
         {
-            const uint64_t start_state = space_length + sample_index * (space_length + sample_length);
+            const uint64_t start_state = sample_index * (space_length + sample_length);
 
             for(uint64_t state = start_state; state < start_state + sample_length; ++state)
             {
