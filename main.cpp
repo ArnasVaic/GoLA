@@ -16,40 +16,17 @@ using namespace Eigen;
 
 int main(int argc, char** argv)
 {
-    constexpr size_t s = 4;
+    constexpr size_t s = 6;
     GameOfLife<s> game;
-    unordered_set<Cycle<s>, Cycle<s>::Hash, Cycle<s>::Equal> cycles;
-    unordered_map<Frame<s>, size_t, Frame<s>::Hash> visited_frames;
-    vector<Frame<s>> cycle_frames;
+    auto cycles = game.find_cycles(65536, 100);
+    cycles = game.search_perturbed(cycles);
 
-    auto start = steady_clock::now();
-
-    for(uint64_t i = 0; i < (1ull << Frame<s>::CellCount); ++i)
-    {
-        game.set(Frame<s>(i));
-        const auto cycle = game.find_cycle(visited_frames, cycle_frames);
-        cycles.insert(cycle);
-    }
-
-    auto end = steady_clock::now();
-    auto ms = duration<double, milli>(end - start).count();
-    
-
-    unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> cycle_indices;
-
-
-    size_t cycle_index_assignment_index = 0;
-    for(const auto &cycle : cycles)
-    {
-        cycle_indices[cycle] = cycle_index_assignment_index++;
-    }
+    cout << "Cycles found: " << cycles.size() << '\n';
 
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<> dis(1000, 9999);
-
     string filename = "s" + to_string(s) + "-" + to_string(dis(gen)) + ".txt";
-
     ofstream os(filename);
 
     if(!os.is_open())
@@ -58,21 +35,25 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    os << "Program took " << ms << "ms, unique cycles: " << cycles.size() << "\n";
+    unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> cycle_indices;
+    size_t cycle_index_assignment_index = 0;
+    for(const auto &cycle : cycles)
+        cycle_indices[cycle] = cycle_index_assignment_index++;
 
     for (const auto &cycle : cycles)
     {
         os << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
-
         for(const auto &frame : cycle.frames())
-        {
             os << frame.get() << ' ';
-        }
-
         os << '\n' << cycle << '\n';
     }
 
+    unordered_map<Frame<s>, size_t, Frame<s>::Hash> visited_frames;
+    vector<Frame<s>> cycle_frames;
+
     MatrixXd matrix(cycles.size(), cycles.size());
+    matrix.setZero();
+
     for(const auto& cycle : cycles)
     {
         unordered_map<Cycle<s>, size_t, Cycle<s>::Hash, Cycle<s>::Equal> dest_cycles;

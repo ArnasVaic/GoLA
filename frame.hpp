@@ -23,9 +23,9 @@ private:
 
 public:
 
-    constexpr static size_t SquareSymmetries = 8;
-
     constexpr static size_t CellCount = Ts * Ts;
+
+    constexpr static size_t States = 1ull << CellCount;
 
 public:
 
@@ -54,15 +54,16 @@ public:
     }
 
     constexpr void set(size_t index) {
-        m_state |= 1ull << index;
+        const uint64_t shifted = 1ull << index;
+        m_state |= shifted;
     }
 
     constexpr void set(size_t index, bool value) {
-        m_state |= value << index;
+        m_state |= static_cast<uint64_t>(value) << index;
     }
 
     constexpr void set(size_t row, size_t col, bool value) {
-        m_state |= value << index_lookup[row][col];
+        m_state |= static_cast<uint64_t>(value) << index_lookup[row][col];
     }
 
     constexpr void set(size_t row, size_t col) {
