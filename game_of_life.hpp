@@ -144,6 +144,7 @@ public:
         return cycles;
     }
 
+    [[nodiscard]]
     std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> search_perturbed(
         std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> cycles)
     {
@@ -175,5 +176,34 @@ public:
         }
 
         return total_cycles;
+    }
+
+    [[nodiscard]]
+    static std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> search_perturbed(
+        Cycle<Ts> const & cycle)
+    {
+        // Reuse containers to avoid instantiation.
+        // Used as a lookup to check if frame has been visited
+        std::unordered_map<Frame<Ts>, size_t, typename Frame<Ts>::Hash> visited_frames;
+        // Cycle frames are accumulated.
+        std::vector<Frame<Ts>> cycle_frames;
+        // Cycles that were found by perturbing each frame from given cycles
+        std::unordered_set<Cycle<Ts>, typename Cycle<Ts>::Hash, typename Cycle<Ts>::Equal> cycles;
+
+        GameOfLife<Ts> game;
+
+        for(const auto& org_frame : cycle.frames())
+        {
+            for(size_t i = 0; i < Frame<Ts>::CellCount; ++i)
+            {
+                Frame<Ts> frame = org_frame;
+                frame.toggle(i);
+                game.set(frame);
+                auto perturbed_cycle = game.find_cycle(visited_frames, cycle_frames);
+                cycles.insert(perturbed_cycle);
+            }
+        }
+
+        return cycles;
     }
 };
