@@ -13,21 +13,50 @@ using namespace std;
 using namespace chrono;
 using namespace Eigen;
 
+template <
+    class result_t   = std::chrono::milliseconds,
+    class clock_t    = std::chrono::steady_clock,
+    class duration_t = std::chrono::milliseconds
+>
+auto since(std::chrono::time_point<clock_t, duration_t> const& start)
+{
+    return std::chrono::duration_cast<result_t>(clock_t::now() - start);
+}
+
 template<size_t N>
 using CycleSet = std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal>;
 
 template<size_t N>
-void search_orbit_recursive(Cycle<N> const& parent_cycle, CycleSet<N> &visited)
+void search_orbit_recursive(
+        Cycle<N> const& parent_cycle,
+        CycleSet<N> &visited,
+        std::unordered_map<Frame<N>, size_t, typename Frame<N>::Hash> &visited_frames,
+        std::vector<Frame<N>> &cycle_frames,
+        GameOfLife<N> &game,
+        Frame<N> &frame)
 {
-    auto cycles = GameOfLife<N>::search_perturbed(parent_cycle);
-
-    for(auto const& cycle : cycles)
+    for(const auto& org_frame : parent_cycle.frames())
     {
-        if(visited.contains(cycle))
-            continue;
+        for(size_t i = 0; i < Frame<N>::CellCount; ++i)
+        {
+            frame = org_frame;
+            frame.toggle(i);
+            game.set(frame);
+            auto cycle = game.find_cycle(visited_frames, cycle_frames);
 
-        visited.insert(cycle);
-        search_orbit_recursive(cycle, visited);
+            if(visited.contains(cycle))
+                continue;
+
+            visited.insert(cycle);
+
+            search_orbit_recursive<N>(
+                cycle,
+                visited,
+                visited_frames,
+                cycle_frames,
+                game,
+                frame);
+        }
     }
 }
 
@@ -37,7 +66,20 @@ CycleSet<N> search_square_orbit()
     CycleSet<N> cache;
     Frame<N> square_frame((0b11ull << N) | 0b11ull);
     Cycle<N> square_cycle(vector<Frame<N>>{ square_frame });
-    search_orbit_recursive<N>(square_cycle, cache);
+
+    std::unordered_map<Frame<N>, size_t, typename Frame<N>::Hash> visited_frames;
+    std::vector<Frame<N>> cycle_frames;
+    GameOfLife<N> game;
+    Frame<N> frame;
+
+    search_orbit_recursive<N>(
+            square_cycle,
+            cache,
+            visited_frames,
+            cycle_frames,
+            game,
+            frame);
+
     cache.insert(square_cycle);
     return cache;
 }
@@ -45,8 +87,11 @@ CycleSet<N> search_square_orbit()
 int main(int argc, char** argv)
 {
 
-    constexpr size_t N = 4;
+    constexpr size_t N = 6;
+
+    auto start = std::chrono::steady_clock::now();
     auto cycles = search_square_orbit<N>();
+    cout << "Elapsed(ms)=" << since(start).count() << '\n';
 //    cout << "Size of closed orbit: " << cycles.size() << '\n';
 //    for(auto const& cycle : cycles)
 //    {
@@ -114,15 +159,17 @@ int main(int argc, char** argv)
 
         for(const auto& [dest_cycle, dest_freq] : dest_cycles)
         {
-            size_t row = cycle_indices[dest_cycle];
-            size_t col = cycle_indices[cycle];
+            Eigen::Index row = cycle_indices[dest_cycle];
+            Eigen:Index col = cycle_indices[cycle];
             auto m = static_cast<double>(dest_freq);
             auto n = static_cast<double>(cycle.frames().size() * Frame<N>::CellCount);
             matrix(row, col) += m / n;
         }
     }
-    EigenSolver<MatrixXd> solver(matrix);
-    os << solver.eigenvalues() << endl;
+    matrix -= MatrixXd::Identity(matrix.rows(), matrix.cols());
+    matrix *= N * N;
+    //EigenSolver<MatrixXd> solver(matrix);
+    //os << solver.eigenvalues() << endl;
     os << matrix << "\n\n";
     os << "Col Sums:\n" << matrix.colwise().sum() << "\n\n";
     os << "Row Sums:\n" << matrix.rowwise().sum() << "\n";
