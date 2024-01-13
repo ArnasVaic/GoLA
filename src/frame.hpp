@@ -10,6 +10,7 @@ class Frame {
 
 private:
 
+    /// @brief internal state of the frame.
     uint64_t m_state;
 
 public:
@@ -99,8 +100,8 @@ public:
     [[nodiscard]] constexpr static std::array<uint64_t, CellCount> create_neighbour_mask_lut();
     [[nodiscard]] constexpr static std::array<std::array<size_t, N>, N> create_index_lut();
 
-    constexpr static std::array<uint64_t, CellCount> neighbour_mask_lookup = create_neighbour_mask_lut();
-    constexpr static std::array<std::array<size_t, N>, N> index_lookup = create_index_lut();
+    constexpr static std::array<uint64_t, CellCount> neighbour_mask_lut = create_neighbour_mask_lut();
+    constexpr static std::array<std::array<size_t, N>, N> index_lut = create_index_lut();
 };
 
 template<size_t Ts>

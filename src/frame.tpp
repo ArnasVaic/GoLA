@@ -28,7 +28,7 @@ template <size_t N>
 requires(N <= 8)
 [[nodiscard]] constexpr bool Frame<N>::get(size_t row, size_t col) const
 {
-    return m_state & (1ull << index_lookup[row][col]);
+    return m_state & (1ull << index_lut[row][col]);
 }
 
 template <size_t N>
@@ -47,13 +47,13 @@ constexpr void Frame<N>::set(size_t index, bool value) {
 template <size_t N>
 requires(N <= 8)
 constexpr void Frame<N>::set(size_t row, size_t col, bool value) {
-    m_state |= static_cast<uint64_t>(value) << index_lookup[row][col];
+    m_state |= static_cast<uint64_t>(value) << index_lut[row][col];
 }
 
 template <size_t N>
 requires(N <= 8)
 constexpr void Frame<N>::set(size_t row, size_t col) {
-    m_state |= 1ull << index_lookup[row][col];
+    m_state |= 1ull << index_lut[row][col];
 }
 
 template <size_t N>
@@ -72,7 +72,7 @@ constexpr void Frame<N>::toggle(size_t index) {
 template <size_t N>
 requires(N <= 8)
 [[nodiscard]] constexpr size_t Frame<N>::neighbour_cnt(size_t index) const {
-    return std::popcount(m_state & neighbour_mask_lookup[index]);
+    return std::popcount(m_state & neighbour_mask_lut[index]);
 }
 
 template<size_t Ts>
@@ -294,7 +294,7 @@ requires(N <= 8)constexpr uint64_t Frame<N>::get_neighbour_mask(size_t cell_row,
 
             size_t col = (N + cell_col + j) % N;
 
-            mask |= 1ull << index_lookup[row][col];
+            mask |= 1ull << index_lut[row][col];
         }
     }
     return mask;

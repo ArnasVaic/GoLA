@@ -5,7 +5,7 @@
 #include <fstream>
 #include <frame.hpp>
 #include <cycle.hpp>
-#include <game_of_life.hpp>
+#include <game.hpp>
 #include <Eigen/Dense>
 #include <random>
 
@@ -23,73 +23,17 @@ auto since(std::chrono::time_point<clock_t, duration_t> const& start)
     return std::chrono::duration_cast<result_t>(clock_t::now() - start);
 }
 
-template<size_t N>
-using CycleSet = std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal>;
-
-template<size_t N>
-void search_orbit_recursive(
-        Cycle<N> const& parent_cycle,
-        CycleSet<N> &visited,
-        std::unordered_map<Frame<N>, size_t, typename Frame<N>::Hash> &visited_frames,
-        std::vector<Frame<N>> &cycle_frames,
-        GameOfLife<N> &game,
-        Frame<N> &frame)
-{
-    for(const auto& org_frame : parent_cycle.frames())
-    {
-        for(size_t i = 0; i < Frame<N>::CellCount; ++i)
-        {
-            frame = org_frame;
-            frame.toggle(i);
-            game.set(frame);
-            auto cycle = game.find_cycle(visited_frames, cycle_frames);
-
-            if(visited.contains(cycle))
-                continue;
-
-            visited.insert(cycle);
-
-            search_orbit_recursive<N>(
-                cycle,
-                visited,
-                visited_frames,
-                cycle_frames,
-                game,
-                frame);
-        }
-    }
-}
-
-template<size_t N>
-CycleSet<N> search_square_orbit()
-{
-    CycleSet<N> cache;
-    Frame<N> square_frame((0b11ull << N) | 0b11ull);
-    Cycle<N> square_cycle(vector<Frame<N>>{ square_frame });
-
-    std::unordered_map<Frame<N>, size_t, typename Frame<N>::Hash> visited_frames;
-    std::vector<Frame<N>> cycle_frames;
-    GameOfLife<N> game;
-    Frame<N> frame;
-
-    search_orbit_recursive<N>(
-            square_cycle,
-            cache,
-            visited_frames,
-            cycle_frames,
-            game,
-            frame);
-
-    cache.insert(square_cycle);
-    return cache;
-}
 
 int main(int argc, char** argv) {
 
-    constexpr size_t N = 8;
+    constexpr size_t N = 6;
+    Game<N> game;
+
+    Frame<N> square_frame((0b11ull << N) | 0b11ull);
+    Cycle<N> square_cycle(vector<Frame<N>>{ square_frame });
 
     auto start = std::chrono::steady_clock::now();
-    auto cycles = search_square_orbit<N>();
+    auto cycles = game.search_orbit(square_cycle);
     cout << "Elapsed(ms)=" << since(start).count() << '\n';
 //    cout << "Size of closed orbit: " << cycles.size() << '\n';
 //    for(auto const& cycle : cycles)
@@ -99,7 +43,6 @@ int main(int argc, char** argv) {
 
 
 //    constexpr size_t s = 6;
-    GameOfLife<N> game;
 //    auto cycles = game.find_cycles(65536, 100);
 //    cycles = game.search_perturbed(cycles);
 //
@@ -163,7 +106,7 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < Frame<N>::CellCount; ++i) {
                 Frame<N> frame = org_frame;
                 frame.toggle(i);
-                game.set(frame);
+                game.reset(frame);
                 auto dest_cycle = game.find_cycle(visited_frames, cycle_frames);
 
                 if (dest_cycles.contains(dest_cycle))

@@ -13,11 +13,13 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # Add your source files here
 add_executable(GoLC
         src/main.cpp
-        src/game_of_life.hpp
+        src/game.hpp
         src/cycle.hpp
         src/frame.hpp
         src/transform.hpp
-        src/frame.tpp)
+        src/frame.tpp
+        src/cycle.tpp
+        src/game.tpp)
 
 # Test executable
 # add_executable(FrameTests tests/frame_tests.cpp)
