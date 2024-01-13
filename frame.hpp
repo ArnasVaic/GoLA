@@ -33,7 +33,7 @@ public:
         : m_state(0)
     { }
 
-    explicit constexpr Frame(uint64_t state)
+    constexpr Frame(uint64_t state)
         : m_state(state)
     { }
 
