@@ -2,7 +2,8 @@
 
 template<size_t N>
 constexpr Game<N>::Game()
-: m_frame(0)
+: m_current(0)
+//, m_next(0)
 , m_generation(0)
 {
 
@@ -10,14 +11,30 @@ constexpr Game<N>::Game()
 
 template<size_t N>
 constexpr void Game<N>::reset(const Frame<N> &frame) {
-    m_frame = frame;
+    m_current = frame;
+    //m_next = 0;
     m_generation = 0;
 }
 
 template<size_t N>
 constexpr void Game<N>::evolve() {
-    m_frame = next();
+
+    Frame<N> next;
+
+    for(size_t i = 0; i < Frame<N>::CellCount; ++i)
+    {
+        const size_t n = m_current.neighbour_cnt(i);
+        const bool alive = m_current.get(i);
+        next.set(i, alive_lut[alive][n]);
+    }
+    m_current = next;
     ++m_generation;
+    //std::swap(m_current, next);
+}
+
+template<size_t N>
+constexpr Frame<N> Game<N>::frame() const {
+    return m_current.state();
 }
 
 template<size_t N>
@@ -25,14 +42,14 @@ constexpr Cycle<N> Game<N>::find_cycle(
     frame_gen_map_t<N> &visited_frames,
     std::vector<Frame<N>> &cycle_frames)
 {
-    visited_frames.insert({ m_frame, m_generation });
+    visited_frames.insert({ m_current, m_generation });
 
     for(;;)
     {
         evolve();
-        if(visited_frames.contains(m_frame))
+        if(visited_frames.contains(m_current))
         {
-            size_t cycle_begin_generation = visited_frames[m_frame];
+            size_t cycle_begin_generation = visited_frames[m_current];
 
             for (const auto& [frame, generation] : visited_frames) {
                 if(generation >= cycle_begin_generation)
@@ -47,14 +64,13 @@ constexpr Cycle<N> Game<N>::find_cycle(
         }
         else
         {
-            visited_frames[m_frame] = m_generation;
+            visited_frames[m_current] = m_generation;
         }
     }
 }
 
 template<size_t N>
-std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal>
-Game<N>::search_perturbed(cycle_uset_t<N> cycles) {
+cycle_uset_t<N> Game<N>::search_perturbed(cycle_uset_t<N> cycles) {
     // Reuse containers to avoid instantiation.
     // Used as a lookup to check if frame has been visited
     frame_gen_map_t<N> visited_frames;
@@ -86,8 +102,7 @@ Game<N>::search_perturbed(cycle_uset_t<N> cycles) {
 }
 
 template<size_t N>
-std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal>
-Game<N>::find_cycles(size_t samples, size_t sample_length) {
+cycle_uset_t<N> Game<N>::find_cycles(size_t samples, size_t sample_length) {
     // Reuse containers to avoid instantiation.
 
     // Used as a lookup to check if frame has been visited
@@ -118,8 +133,7 @@ Game<N>::find_cycles(size_t samples, size_t sample_length) {
 }
 
 template<size_t N>
-std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal>
-Game<N>::search_perturbed(const Cycle<N> &cycle) {
+cycle_uset_t<N> Game<N>::search_perturbed(const Cycle<N> &cycle) {
     // Reuse containers to avoid instantiation.
     // Used as a lookup to check if frame has been visited
     frame_gen_map_t<N> visited_frames;
@@ -143,18 +157,6 @@ Game<N>::search_perturbed(const Cycle<N> &cycle) {
     }
 
     return cycles;
-}
-
-template<size_t N>
-constexpr Frame<N> Game<N>::next() const {
-    Frame<N> next;
-    for(size_t i = 0; i < Frame<N>::CellCount; ++i)
-    {
-        const size_t n = m_frame.neighbour_cnt(i);
-        const bool alive = m_frame.get(i);
-        next.set(i, alive_lut[alive][n]);
-    }
-    return next;
 }
 
 template<size_t N>

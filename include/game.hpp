@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 #include <cycle.hpp>
 #include <frame.hpp>
 
@@ -17,16 +18,16 @@ class Game
 private:
 
     Frame<N> m_current;
-    Frame<N> m_frame;
+    //Frame<N> m_next;
     size_t m_generation;
 
 public:
 
     constexpr Game();
-
-    [[nodiscard]] constexpr Frame<N> next() const;
     constexpr void evolve();
     constexpr void reset(const Frame<N> &frame);
+
+    [[nodiscard]] constexpr Frame<N> frame() const;
 
     [[nodiscard]]
     constexpr Cycle<N> find_cycle(

@@ -1,5 +1,7 @@
 #pragma once
 #include <ostream>
+#include <optional>
+#include <algorithm>
 #include <transform.hpp>
 
 /// @brief
@@ -24,7 +26,15 @@ public:
     constexpr Frame();
     constexpr Frame(uint64_t state);
 
-    [[nodiscard]] constexpr uint64_t get() const;
+    /// @brief Construct a frame from a string or fail is the format is incorrect.
+    /// Cells should me denoted in a following way:
+    /// Dead: `.`
+    /// Alive: `#`
+    /// @param str input string.
+    /// @return optional frame.
+    [[nodiscard]] constexpr static std::optional<Frame<N>> from_str(std::string_view const& str);
+
+    [[nodiscard]] constexpr uint64_t state() const;
     [[nodiscard]] constexpr bool get(size_t index) const;
     [[nodiscard]] constexpr bool get(size_t row, size_t col) const;
 

@@ -1,17 +1,19 @@
+#include <game.hpp>
+
 #include <chrono>
 #include <vector>
 #include <iostream>
 #include <unordered_set>
 #include <fstream>
-#include <frame.hpp>
-#include <cycle.hpp>
-#include <game.hpp>
 #include <Eigen/Dense>
 #include <random>
 
 using namespace std;
 using namespace chrono;
 using namespace Eigen;
+
+template <size_t N>
+using cycle_ids = unordered_map<Cycle<N>, size_t, typename Cycle<N>::Hash, typename Cycle<N>::Equal>;
 
 template <
     class result_t   = std::chrono::milliseconds,
@@ -25,8 +27,7 @@ auto since(std::chrono::time_point<clock_t, duration_t> const& start)
 
 
 int main(int argc, char** argv) {
-
-    constexpr size_t N = 6;
+    constexpr size_t N = 5;
     Game<N> game;
 
     Frame<N> square_frame((0b11ull << N) | 0b11ull);
@@ -35,17 +36,7 @@ int main(int argc, char** argv) {
     auto start = std::chrono::steady_clock::now();
     auto cycles = game.search_orbit(square_cycle);
     cout << "Elapsed(ms)=" << since(start).count() << '\n';
-//    cout << "Size of closed orbit: " << cycles.size() << '\n';
-//    for(auto const& cycle : cycles)
-//    {
-//        cout << cycle << '\n';
-//    }
 
-
-//    constexpr size_t s = 6;
-//    auto cycles = game.find_cycles(65536, 100);
-//    cycles = game.search_perturbed(cycles);
-//
     cout << "Cycles found: " << cycles.size() << '\n';
 
     random_device rd;
@@ -60,12 +51,13 @@ int main(int argc, char** argv) {
     }
 
     // place empty space in the front
-    auto null_cycle = find_if(cycles.begin(), cycles.end(), [](Cycle<N> const &cycle) {
-        return cycle.frames().contains(0);
-    });
+    auto null_cycle = find_if(
+        cycles.begin(),
+        cycles.end(),
+        [](Cycle<N> const &cycle) { return cycle.frames().contains(0); }
+    );
 
-    unordered_map<Cycle<N>, size_t, Cycle<N>::Hash, Cycle<N>::Equal> cycle_indices;
-
+    cycle_ids<N> cycle_indices;
     cycle_indices[*null_cycle] = 0;
 
     size_t cycle_index_assignment_index = 1;
@@ -86,7 +78,7 @@ int main(int argc, char** argv) {
     for (const auto &cycle: cycles) {
         os << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
         for (const auto &frame: cycle.frames())
-            os << frame.get() << ' ';
+            os << frame.state() << ' ';
         os << '\n' << cycle << '\n';
     }
 
@@ -124,26 +116,6 @@ int main(int argc, char** argv) {
             matrix_divided(row, col) += dest_freq / n;
         }
     }
-
-//    for (int i = 0; i < matrix.rows(); ++i)
-//    {
-//        for (int j = 0; j < matrix.cols(); ++j)
-//        {
-//            const auto n = cycles_vec[j].frames().size() * Frame<N>::CellCount;
-//            matrix(i, j) /= n;
-//        }
-//    }
-
-    //os << "Divide immediately\n";
-    //os << N * N * (matrix_divided - MatrixXd::Identity(matrix_divided.rows(), matrix_divided.cols())) << '\n';
-    //os << "Divide after\n";
-    //os << N * N * (matrix - MatrixXi::Identity(matrix_divided.rows(), matrix_divided.cols()))<< '\n';;
-
-    //matrix -= MatrixXi::Identity(matrix.rows(), matrix.cols());
-    //matrix *= N * N;
-    //EigenSolver<MatrixXd> solver(matrix);
-
-    //os << solver.eigenvalues() << endl;
 
     for(Index i = 0; i < matrix.rows(); ++i)
     {

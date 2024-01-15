@@ -8,7 +8,7 @@ constexpr size_t Cycle<N>::Hash::operator()(const Cycle<N> &cycle) const {
 
     for (const auto& i : cycle.frames())
     {
-        seed ^= hash(i.get()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hash(i.state()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 
     return seed;

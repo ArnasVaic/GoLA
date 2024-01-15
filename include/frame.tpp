@@ -10,9 +10,29 @@ constexpr Frame<N>::Frame(uint64_t state)
 : m_state(state)
 { }
 
+template<size_t N>
+requires(N <= 8)
+constexpr std::optional<Frame<N>> Frame<N>::from_str(const std::string_view &str) {
+
+    if(str.length() != N * N)
+        return std::nullopt;
+
+    auto is_allowed = [](char c){ return '.' == c || '#' == c; };
+    if(!std::all_of(str.begin(), str.end(), is_allowed))
+        return std::nullopt;
+
+    Frame<N> result;
+    for(size_t i = 0; i < str.length(); ++i)
+    {
+        result.set(i, str[i] == '#');
+    }
+
+    return result;
+}
+
 template <size_t N>
 requires(N <= 8)
-constexpr uint64_t Frame<N>::get() const
+constexpr uint64_t Frame<N>::state() const
 {
     return m_state;
 }
@@ -77,17 +97,17 @@ requires(N <= 8)
 
 template<size_t Ts>
 requires(Ts <= 8)bool Frame<Ts>::operator==(const Frame<Ts> &other) const {
-    return get() == other.get();
+    return state() == other.state();
 }
 
 template<size_t Ts>
 requires(Ts <= 8)constexpr auto Frame<Ts>::operator<=>(const Frame<Ts> &other) const {
-    return get() <=> other.get();
+    return state() <=> other.state();
 }
 
 template<size_t Ts>
 requires(Ts <= 8)size_t Frame<Ts>::Hash::operator()(const Frame<Ts> &frame) const {
-    return std::hash<uint64_t>()(frame.get());
+    return std::hash<uint64_t>()(frame.state());
 }
 
 template<size_t Ts>
@@ -176,7 +196,7 @@ requires(Ts <= 8)
 template<bool Horizontal, bool Vertical>
 constexpr Frame<Ts> Frame<Ts>::flipped() const {
     if constexpr (!Horizontal && !Vertical)
-        return get();
+        return state();
 
     Frame<Ts> result;
     bool cell_value;
@@ -223,7 +243,7 @@ template<size_t Tid>
 requires(Tid < 8)
 constexpr Frame<Ts> Frame<Ts>::transformed() const {
     if constexpr (0 == Tid) {
-        return Frame<Ts>(get());
+        return Frame<Ts>(state());
     } else if (1 == Tid) {
         return flipped<false, true>();
     } else if (2 == Tid) {
@@ -250,10 +270,10 @@ constexpr Frame<Ts> Frame<Ts>::rotated() const {
     for (size_t row = 0; row < Ts; ++row) {
         for (size_t col = 0; col < Ts; ++col) {
             if constexpr (Tcw)
-                cell_value = get(Ts - 1 - col , row);
+                cell_value = get(Ts - 1 - col, row);
 
             else
-                cell_value = get(col, Ts - 1 - row );
+                cell_value = get(col, Ts - 1 - row);
 
             result.set(row, col, cell_value);
         }
@@ -264,7 +284,7 @@ constexpr Frame<Ts> Frame<Ts>::rotated() const {
 template<size_t Ts>
 requires(Ts <= 8)constexpr Frame<Ts> Frame<Ts>::transformed(size_t transform_index) const {
     if (0 == transform_index) {
-        return Frame<Ts>(get());
+        return Frame<Ts>(state());
     } else if (1 == transform_index) {
         return flipped<false, true>();
     } else if (2 == transform_index) {
