@@ -18,7 +18,7 @@ class Game
 private:
 
     Frame<N> m_current;
-    //Frame<N> m_next;
+    Frame<N> m_next;
     size_t m_generation;
 
 public:

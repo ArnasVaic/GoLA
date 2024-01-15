@@ -17,9 +17,9 @@ private:
 
 public:
 
-    constexpr static size_t CellCount = N * N;
+    constexpr static size_t cell_count = N * N;
 
-    constexpr static size_t States = 1ull << CellCount;
+    constexpr static size_t States = 1ull << cell_count;
 
 public:
 
@@ -107,10 +107,10 @@ public:
     [[nodiscard]] constexpr Frame<N> transformed(size_t transform_index) const;
 
     [[nodiscard]] constexpr static uint64_t get_neighbour_mask(size_t cell_row, size_t cell_col);
-    [[nodiscard]] constexpr static std::array<uint64_t, CellCount> create_neighbour_mask_lut();
+    [[nodiscard]] constexpr static std::array<uint64_t, cell_count> create_neighbour_mask_lut();
     [[nodiscard]] constexpr static std::array<std::array<size_t, N>, N> create_index_lut();
 
-    constexpr static std::array<uint64_t, CellCount> neighbour_mask_lut = create_neighbour_mask_lut();
+    constexpr static std::array<uint64_t, cell_count> neighbour_mask_lut = create_neighbour_mask_lut();
     constexpr static std::array<std::array<size_t, N>, N> index_lut = create_index_lut();
 };
 

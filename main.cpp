@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
         unordered_map<Cycle<N>, size_t, Cycle<N>::Hash, Cycle<N>::Equal> dest_cycles;
 
         for (const auto &org_frame: cycle.frames()) {
-            for (size_t i = 0; i < Frame<N>::CellCount; ++i) {
+            for (size_t i = 0; i < Frame<N>::cell_count; ++i) {
                 Frame<N> frame = org_frame;
                 frame.toggle(i);
                 game.reset(frame);
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
         for (const auto &[dest_cycle, dest_freq]: dest_cycles) {
             const Index row = cycle_indices[dest_cycle];
             const Index col = cycle_indices[cycle];
-            const auto n = static_cast<double>(cycle.frames().size() * Frame<N>::CellCount);
+            const auto n = static_cast<double>(cycle.frames().size() * Frame<N>::cell_count);
             matrix(row, col) += dest_freq;// / n;
             matrix_divided(row, col) += dest_freq / n;
         }
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     {
         for(Index j = 0; j < matrix.cols(); ++j)
         {
-            const int n = cycles_vec[j].frames().size() * Frame<N>::CellCount;
+            const int n = cycles_vec[j].frames().size() * Frame<N>::cell_count;
 
             // we're on the diagonal
             if(i == j)

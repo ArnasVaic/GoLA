@@ -3,7 +3,7 @@
 template<size_t N>
 constexpr Game<N>::Game()
 : m_current(0)
-//, m_next(0)
+, m_next(0)
 , m_generation(0)
 {
 
@@ -12,24 +12,21 @@ constexpr Game<N>::Game()
 template<size_t N>
 constexpr void Game<N>::reset(const Frame<N> &frame) {
     m_current = frame;
-    //m_next = 0;
+    m_next = 0;
     m_generation = 0;
 }
 
 template<size_t N>
 constexpr void Game<N>::evolve() {
-
-    Frame<N> next;
-
-    for(size_t i = 0; i < Frame<N>::CellCount; ++i)
+    m_next = 0;
+    for(size_t i = 0; i < Frame<N>::cell_count; ++i)
     {
         const size_t n = m_current.neighbour_cnt(i);
         const bool alive = m_current.get(i);
-        next.set(i, alive_lut[alive][n]);
+        m_next.set(i, alive_lut[alive][n]);
     }
-    m_current = next;
+    m_current = m_next;
     ++m_generation;
-    //std::swap(m_current, next);
 }
 
 template<size_t N>
@@ -87,7 +84,7 @@ cycle_uset_t<N> Game<N>::search_perturbed(cycle_uset_t<N> cycles) {
     {
         for(const auto& org_frame : cycle.frames())
         {
-            for(size_t i = 0; i < Frame<N>::CellCount; ++i)
+            for(size_t i = 0; i < Frame<N>::cell_count; ++i)
             {
                 Frame<N> frame = org_frame;
                 frame.toggle(i);
@@ -142,16 +139,14 @@ cycle_uset_t<N> Game<N>::search_perturbed(const Cycle<N> &cycle) {
     // Cycles that were found by perturbing each frame from given cycles
     cycle_uset_t<N> cycles;
 
-    Game<N> game;
-
     for(const auto& org_frame : cycle.frames())
     {
-        for(size_t i = 0; i < Frame<N>::CellCount; ++i)
+        for(size_t i = 0; i < Frame<N>::cell_count; ++i)
         {
             Frame<N> frame = org_frame;
             frame.toggle(i);
-            game.reset(frame);
-            auto perturbed_cycle = game.find_cycle(visited_frames, cycle_frames);
+            reset(frame);
+            auto perturbed_cycle = find_cycle(visited_frames, cycle_frames);
             cycles.insert(perturbed_cycle);
         }
     }
@@ -169,7 +164,7 @@ void Game<N>::search_orbit_recursive(
 {
     for(const auto& org_frame : parent_cycle.frames())
     {
-        for(size_t i = 0; i < Frame<N>::CellCount; ++i)
+        for(size_t i = 0; i < Frame<N>::cell_count; ++i)
         {
             frame = org_frame;
             frame.toggle(i);

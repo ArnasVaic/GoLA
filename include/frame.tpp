@@ -322,8 +322,8 @@ requires(N <= 8)constexpr uint64_t Frame<N>::get_neighbour_mask(size_t cell_row,
 
 template<size_t N>
 requires(N <= 8)
-constexpr std::array<uint64_t, Frame<N>::CellCount> Frame<N>::create_neighbour_mask_lut() {
-    std::array<uint64_t, CellCount> table{};
+constexpr std::array<uint64_t, Frame<N>::cell_count> Frame<N>::create_neighbour_mask_lut() {
+    std::array<uint64_t, cell_count> table{};
     for (size_t row = 0; row < N; ++row) {
         for (size_t col = 0; col < N; ++col) {
             auto index = to_index(row, col);
@@ -348,7 +348,7 @@ requires(Ts <= 8)constexpr std::array<std::array<size_t, Ts>, Ts> Frame<Ts>::cre
 
 template<size_t N>
 std::ostream &operator<<(std::ostream &os, const Frame<N> &frame) {
-    for(size_t i = 0; i < frame.CellCount; ++i)
+    for(size_t i = 0; i < frame.cell_count; ++i)
     {
         os << (frame.get(i) ? '#' : '.') << ' ';
 
