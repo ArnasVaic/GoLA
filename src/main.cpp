@@ -100,7 +100,7 @@ std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal> 
             }
         }
 
-        cout << "Cycle stack size:" << cycleStack.size() << '\n';
+        //cout << "Cycle stack size:" << cycleStack.size() << '\n';
     }
 
     cache.insert(square_cycle);
@@ -227,22 +227,62 @@ void write_matrix_data(
             destination_frequencies[col] += dest_freq;
         }
 
+        size_t zero_counter = 0;
+
         for(auto const& frequency : destination_frequencies)
         {
             auto const scaled = static_cast<int64_t>(frequency * N * N);
 
-            if(0 == scaled || 0 == scaled % n)
+            if(0 == scaled)
             {
-                os << scaled / n << ' ';
+                ++zero_counter;
             }
             else
             {
-                int d = gcd(scaled, n);
-                char buf[20];
-                sprintf(buf, "%lli/%lli", scaled / d, n / d);
-                os << buf << ' ';
+                // reset the zero counter and print zeros
+
+                if(zero_counter > 0)
+                {
+                    if(1 == zero_counter)
+                    {
+                        os << 0 << ' ';
+                    }
+                    else
+                    {
+                        os << 0 << '$' << zero_counter << ' ';
+                    }
+
+                    zero_counter = 0;
+                }
+
+                if(0 == scaled % n)
+                {
+                    os << scaled / n << ' ';
+                }
+                else
+                {
+                    int d = gcd(scaled, n);
+                    char buf[20];
+                    sprintf(buf, "%lli/%lli", scaled / d, n / d);
+                    os << buf << ' ';
+                }
             }
         }
+
+        if(zero_counter > 0)
+        {
+            if(1 == zero_counter)
+            {
+                os << 0 << ' ';
+            }
+            else
+            {
+                os << 0 << '$' << zero_counter << ' ';
+            }
+
+            zero_counter = 0;
+        }
+
         //os << "[sum=" << std::accumulate(destination_frequencies.begin(), destination_frequencies.end(), 0) << "]\n";
         os << '\n';
     }
@@ -252,7 +292,7 @@ void write_matrix_data(
 
 void main_flow()
 {
-    constexpr size_t N = 7;
+    constexpr size_t N = 5;
 
     auto start = std::chrono::steady_clock::now();
     auto cycles = search_square_orbit<N>();
