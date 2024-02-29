@@ -1,97 +1,115 @@
+#include "absl/hash/hash.h"
+
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr Frame<N>::Frame()
 : m_state(0)
 { }
 
 template <size_t N>
-requires(N <= 8)
-constexpr Frame<N>::Frame(uint64_t state)
+requires(N <= 11)
+constexpr Frame<N>::Frame(absl::uint128 state)
 : m_state(state)
 { }
 
 template <size_t N>
-requires(N <= 8)
-constexpr uint64_t Frame<N>::get() const
+requires(N <= 11)
+constexpr absl::uint128 Frame<N>::get() const
 {
     return m_state;
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr bool Frame<N>::get(size_t index) const
 {
-    return m_state & (1ull << index);
+    absl::uint128 mask = 1;
+    ShiftLeftEq(mask, index);
+    auto masked = m_state & mask;
+    return masked > 0;
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 [[nodiscard]] constexpr bool Frame<N>::get(size_t row, size_t col) const
 {
-    return m_state & (1ull << index_lookup[row][col]);
+    absl::uint128 mask = 1;
+    ShiftLeftEq(mask, index_lookup[row][col]);
+    const auto masked = m_state & mask;
+    return masked > 0;
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr void Frame<N>::set(size_t index) {
-    const uint64_t shifted = 1ull << index;
+    const absl::uint128 shifted = 1ull << index;
     m_state |= shifted;
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr void Frame<N>::set(size_t index, bool value) {
-    m_state |= static_cast<uint64_t>(value) << index;
+    m_state |= static_cast<absl::uint128>(value) << index;
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr void Frame<N>::set(size_t row, size_t col, bool value) {
     m_state |= static_cast<uint64_t>(value) << index_lookup[row][col];
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr void Frame<N>::set(size_t row, size_t col) {
     m_state |= 1ull << index_lookup[row][col];
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr size_t Frame<N>::to_index(size_t row, size_t col)
 {
     return col + row * N;
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 constexpr void Frame<N>::toggle(size_t index) {
     m_state ^= 1ull << index;
 }
 
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 [[nodiscard]] constexpr size_t Frame<N>::neighbour_cnt(size_t index) const {
-    return std::popcount(m_state & neighbour_mask_lookup[index]);
+    const absl::uint128 near = m_state & neighbour_mask_lookup[index];
+    const auto high = absl::Uint128High64(near);
+    const auto low = absl::Uint128Low64(near);
+    return std::popcount(high) + std::popcount(low);
 }
 
 template<size_t Ts>
-requires(Ts <= 8)bool Frame<Ts>::operator==(const Frame<Ts> &other) const {
+requires(Ts <= 11)bool Frame<Ts>::operator==(const Frame<Ts> &other) const {
     return get() == other.get();
 }
 
 template<size_t Ts>
-requires(Ts <= 8)constexpr auto Frame<Ts>::operator<=>(const Frame<Ts> &other) const {
-    return get() <=> other.get();
+requires(Ts <= 11)constexpr auto Frame<Ts>::operator<(const Frame<Ts> &other) const {
+    return get() < other.get();
 }
 
 template<size_t Ts>
-requires(Ts <= 8)size_t Frame<Ts>::Hash::operator()(const Frame<Ts> &frame) const {
-    return std::hash<uint64_t>()(frame.get());
+requires(Ts <= 11)constexpr auto Frame<Ts>::operator>(const Frame<Ts> &other) const {
+    return get() > other.get();
 }
 
 template<size_t Ts>
-requires(Ts <= 8)constexpr Frame<Ts> Frame<Ts>::normalized(Transform &min_transform) const {
+requires(Ts <= 11)size_t Frame<Ts>::Hash::operator()(const Frame<Ts> &frame) const {
+
+    const absl::Hash<absl::uint128> hasher;
+    return hasher(frame.get());
+}
+
+template<size_t Ts>
+requires(Ts <= 11)constexpr Frame<Ts> Frame<Ts>::normalized(Transform &min_transform) const {
     min_transform = Transform();
     Frame<Ts> min_state(m_state);
     for (size_t row_offset = 0; row_offset < Ts; ++row_offset) {
@@ -159,7 +177,7 @@ requires(Ts <= 8)constexpr Frame<Ts> Frame<Ts>::normalized(Transform &min_transf
 }
 
 template<size_t Ts>
-requires(Ts <= 8)constexpr Frame<Ts> Frame<Ts>::translated(size_t row_offset, size_t col_offset) const {
+requires(Ts <= 11)constexpr Frame<Ts> Frame<Ts>::translated(size_t row_offset, size_t col_offset) const {
     Frame<Ts> result;
     for (size_t row = 0; row < Ts; ++row) {
         const size_t new_row = (row + row_offset) % Ts;
@@ -172,7 +190,7 @@ requires(Ts <= 8)constexpr Frame<Ts> Frame<Ts>::translated(size_t row_offset, si
 }
 
 template<size_t Ts>
-requires(Ts <= 8)
+requires(Ts <= 11)
 template<bool Horizontal, bool Vertical>
 constexpr Frame<Ts> Frame<Ts>::flipped() const {
     if constexpr (!Horizontal && !Vertical)
@@ -198,7 +216,7 @@ constexpr Frame<Ts> Frame<Ts>::flipped() const {
 }
 
 template<size_t Ts>
-requires(Ts <= 8)
+requires(Ts <= 11)
 template<bool Anti>
 constexpr Frame<Ts> Frame<Ts>::transposed() const {
     Frame<Ts> result;
@@ -218,7 +236,7 @@ constexpr Frame<Ts> Frame<Ts>::transposed() const {
 }
 
 template<size_t Ts>
-requires(Ts <= 8)
+requires(Ts <= 11)
 template<size_t Tid>
 requires(Tid < 8)
 constexpr Frame<Ts> Frame<Ts>::transformed() const {
@@ -242,7 +260,7 @@ constexpr Frame<Ts> Frame<Ts>::transformed() const {
 }
 
 template<size_t Ts>
-requires(Ts <= 8)
+requires(Ts <= 11)
 template<bool Tcw>
 constexpr Frame<Ts> Frame<Ts>::rotated() const {
     Frame<Ts> result;
@@ -262,7 +280,7 @@ constexpr Frame<Ts> Frame<Ts>::rotated() const {
 }
 
 template<size_t Ts>
-requires(Ts <= 8)constexpr Frame<Ts> Frame<Ts>::transformed(size_t transform_index) const {
+requires(Ts <= 11)constexpr Frame<Ts> Frame<Ts>::transformed(size_t transform_index) const {
     if (0 == transform_index) {
         return Frame<Ts>(get());
     } else if (1 == transform_index) {
@@ -283,8 +301,8 @@ requires(Ts <= 8)constexpr Frame<Ts> Frame<Ts>::transformed(size_t transform_ind
 }
 
 template<size_t N>
-requires(N <= 8)constexpr uint64_t Frame<N>::get_neighbour_mask(size_t cell_row, size_t cell_col) {
-    uint64_t mask = 0;
+requires(N <= 11) constexpr absl::uint128 Frame<N>::get_neighbour_mask(size_t cell_row, size_t cell_col) {
+    absl::uint128 mask = 0;
     for (int i = -1; i < 2; ++i) {
         size_t row = (N + cell_row + i) % N;
 
@@ -294,16 +312,18 @@ requires(N <= 8)constexpr uint64_t Frame<N>::get_neighbour_mask(size_t cell_row,
 
             size_t col = (N + cell_col + j) % N;
 
-            mask |= 1ull << index_lookup[row][col];
+            absl::uint128 bitmask = 1;
+            ShiftLeftEq(bitmask, index_lookup[row][col]);
+            OrEqual(mask, bitmask);
         }
     }
     return mask;
 }
 
 template<size_t N>
-requires(N <= 8)
-constexpr std::array<uint64_t, Frame<N>::CellCount> Frame<N>::create_neighbour_mask_lut() {
-    std::array<uint64_t, CellCount> table{};
+requires(N <= 11)
+constexpr std::array<absl::uint128, Frame<N>::CellCount> Frame<N>::create_neighbour_mask_lut() {
+    std::array<absl::uint128, CellCount> table{};
     for (size_t row = 0; row < N; ++row) {
         for (size_t col = 0; col < N; ++col) {
             auto index = to_index(row, col);
@@ -314,7 +334,7 @@ constexpr std::array<uint64_t, Frame<N>::CellCount> Frame<N>::create_neighbour_m
 }
 
 template<size_t Ts>
-requires(Ts <= 8)constexpr std::array<std::array<size_t, Ts>, Ts> Frame<Ts>::create_index_lut() {
+requires(Ts <= 11)constexpr std::array<std::array<size_t, Ts>, Ts> Frame<Ts>::create_index_lut() {
     std::array<std::array<size_t, Ts>, Ts> table{};
 
     for (size_t row = 0; row < Ts; ++row) {

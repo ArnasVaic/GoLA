@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <frame.hpp>
+#include "absl/hash/hash.h"
 
 /// @brief 
 /// @tparam Ts size of the board 
@@ -71,15 +72,12 @@ public:
     {
         [[nodiscard]] constexpr size_t operator()(const Cycle<Ts>& cycle) const
         {
-
-            std::hash<uint64_t> hasher;
             size_t seed = 0;
-
-            for (const auto& i : cycle.frames()) 
+            for (const auto& frame : cycle.frames())
             {
-                seed ^= hasher(i.get()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+                const typename Frame<Ts>::Hash hasher;
+                seed ^= hasher(frame) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             }
-
             return seed;
         }
     };

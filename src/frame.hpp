@@ -1,29 +1,30 @@
 #pragma once
 #include <ostream>
+#include <absl/numeric/int128.h>
 #include <transform.hpp>
 
 /// @brief
 /// @tparam N width and height of the frame
 template <size_t N>
-requires(N <= 8)
+requires(N <= 11)
 class Frame {
 
 private:
 
-    uint64_t m_state;
+    absl::uint128 m_state;
 
 public:
 
     constexpr static size_t CellCount = N * N;
 
-    constexpr static size_t States = 1ull << CellCount;
+    constexpr static absl::uint128 States = 1ull << CellCount;
 
 public:
 
     constexpr Frame();
-    constexpr Frame(uint64_t state);
+    constexpr Frame(absl::uint128 state);
 
-    [[nodiscard]] constexpr uint64_t get() const;
+    [[nodiscard]] constexpr absl::uint128 get() const;
     [[nodiscard]] constexpr bool get(size_t index) const;
     [[nodiscard]] constexpr bool get(size_t row, size_t col) const;
 
@@ -38,7 +39,8 @@ public:
 
     [[nodiscard]] constexpr size_t neighbour_cnt(size_t index) const;
 
-    [[nodiscard]] constexpr auto operator<=>(Frame<N> const& other) const;
+    [[nodiscard]] constexpr auto operator<(Frame<N> const& other) const;
+    [[nodiscard]] constexpr auto operator>(Frame<N> const& other) const;
     [[nodiscard]] bool operator==(Frame<N> const& other) const;
 
     struct Hash {
@@ -95,13 +97,21 @@ public:
     /// @return Transformed frame.
     [[nodiscard]] constexpr Frame<N> transformed(size_t transform_index) const;
 
-    [[nodiscard]] constexpr static uint64_t get_neighbour_mask(size_t cell_row, size_t cell_col);
-    [[nodiscard]] constexpr static std::array<uint64_t, CellCount> create_neighbour_mask_lut();
+    [[nodiscard]] constexpr static absl::uint128 get_neighbour_mask(size_t cell_row, size_t cell_col);
+    [[nodiscard]] constexpr static std::array<absl::uint128, CellCount> create_neighbour_mask_lut();
     [[nodiscard]] constexpr static std::array<std::array<size_t, N>, N> create_index_lut();
 
-    constexpr static std::array<uint64_t, CellCount> neighbour_mask_lookup = create_neighbour_mask_lut();
+    constexpr static std::array<absl::uint128, CellCount> neighbour_mask_lookup = create_neighbour_mask_lut();
     constexpr static std::array<std::array<size_t, N>, N> index_lookup = create_index_lut();
 };
+
+constexpr void OrEqual(absl::uint128 &left, absl::uint128 right) {
+    left = left | right;
+}
+
+constexpr void ShiftLeftEq(absl::uint128 &target, int amount) {
+    target = target << amount;
+}
 
 template<size_t Ts>
 std::ostream& operator<<(std::ostream& os, const Frame<Ts>& frame);

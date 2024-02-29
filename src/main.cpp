@@ -84,8 +84,8 @@ CycleSet<N> search_square_orbit()
     return cache;
 }
 
-int main(int argc, char** argv) {
-
+void main_flow()
+{
     constexpr size_t N = 8;
 
     auto start = std::chrono::steady_clock::now();
@@ -113,12 +113,14 @@ int main(int argc, char** argv) {
 
     if (!os.is_open()) {
         cout << "Could not output input file: " << filename << '\n';
-        return 0;
+        return;
     }
 
     // place empty space in the front
     auto null_cycle = find_if(cycles.begin(), cycles.end(), [](Cycle<N> const &cycle) {
-        return cycle.frames().contains(0);
+        Frame<N> zero(0);
+        auto const& frames = cycle.frames();
+        return frames.contains(zero);
     });
 
     unordered_map<Cycle<N>, size_t, Cycle<N>::Hash, Cycle<N>::Equal> cycle_indices;
@@ -232,4 +234,18 @@ int main(int argc, char** argv) {
     os << "Col Sums: " << matrix.colwise().sum() << '\n';
     os << "Row Sums: " << matrix.rowwise().sum().transpose() << '\n';
     os.close();
+}
+
+void test_flow()
+{
+    for(auto const& mask : Frame<9>::neighbour_mask_lookup)
+    {
+        cout << Frame<8>(mask) << '\n';
+    }
+}
+
+int main(int argc, char** argv) {
+    test_flow();
+    //main_flow();
+    return 0;
 }
