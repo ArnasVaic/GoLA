@@ -18,6 +18,11 @@ private:
 
 public:
 
+    constexpr Cycle()
+    {
+        m_frames = std::set<Frame<Ts>> { Frame<Ts>(0) };
+    }
+
     explicit constexpr Cycle(const std::vector<Frame<Ts>> &frames)
     {
         m_frames = normalize(frames);
