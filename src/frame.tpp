@@ -23,9 +23,8 @@ template <size_t N>
 requires(N <= 11)
 constexpr bool Frame<N>::get(size_t index) const
 {
-    absl::uint128 mask = 1;
-    ShiftLeftEq(mask, index);
-    auto masked = m_state & mask;
+    const absl::uint128 mask = 1;
+    auto masked = m_state & (mask << index);
     return masked > 0;
 }
 
@@ -33,35 +32,37 @@ template <size_t N>
 requires(N <= 11)
 [[nodiscard]] constexpr bool Frame<N>::get(size_t row, size_t col) const
 {
-    absl::uint128 mask = 1;
-    ShiftLeftEq(mask, index_lookup[row][col]);
-    const auto masked = m_state & mask;
+    const absl::uint128 mask = 1;
+    const auto masked = m_state & (mask << index_lookup[row][col]);
     return masked > 0;
 }
 
 template <size_t N>
 requires(N <= 11)
 constexpr void Frame<N>::set(size_t index) {
-    const absl::uint128 shifted = 1ull << index;
-    m_state |= shifted;
+    const absl::uint128 one = 1;
+    m_state |= one << index;
 }
 
 template <size_t N>
 requires(N <= 11)
 constexpr void Frame<N>::set(size_t index, bool value) {
-    m_state |= static_cast<absl::uint128>(value) << index;
+    const absl::uint128 bit = value;
+    m_state |= bit << index;
 }
 
 template <size_t N>
 requires(N <= 11)
 constexpr void Frame<N>::set(size_t row, size_t col, bool value) {
-    m_state |= static_cast<uint64_t>(value) << index_lookup[row][col];
+    const absl::uint128 bit = value;
+    m_state |= bit << index_lookup[row][col];
 }
 
 template <size_t N>
 requires(N <= 11)
 constexpr void Frame<N>::set(size_t row, size_t col) {
-    m_state |= 1ull << index_lookup[row][col];
+    const absl::uint128 one = 1;
+    m_state |= one << index_lookup[row][col];
 }
 
 template <size_t N>
@@ -74,7 +75,8 @@ constexpr size_t Frame<N>::to_index(size_t row, size_t col)
 template <size_t N>
 requires(N <= 11)
 constexpr void Frame<N>::toggle(size_t index) {
-    m_state ^= 1ull << index;
+    const absl::uint128 one = 1;
+    m_state ^= one << index;
 }
 
 template <size_t N>
@@ -304,17 +306,17 @@ template<size_t N>
 requires(N <= 11) constexpr absl::uint128 Frame<N>::get_neighbour_mask(size_t cell_row, size_t cell_col) {
     absl::uint128 mask = 0;
     for (int i = -1; i < 2; ++i) {
-        size_t row = (N + cell_row + i) % N;
+        const size_t row = (N + cell_row + i) % N;
 
         for (int j = -1; j < 2; ++j) {
+
             if (i == 0 && j == 0)
                 continue;
 
-            size_t col = (N + cell_col + j) % N;
-
+            const size_t col = (N + cell_col + j) % N;
             absl::uint128 bitmask = 1;
-            ShiftLeftEq(bitmask, index_lookup[row][col]);
-            OrEqual(mask, bitmask);
+            bitmask = bitmask << index_lookup[row][col];
+            mask = mask | bitmask;
         }
     }
     return mask;

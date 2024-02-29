@@ -105,14 +105,6 @@ public:
     constexpr static std::array<std::array<size_t, N>, N> index_lookup = create_index_lut();
 };
 
-constexpr void OrEqual(absl::uint128 &left, absl::uint128 right) {
-    left = left | right;
-}
-
-constexpr void ShiftLeftEq(absl::uint128 &target, int amount) {
-    target = target << amount;
-}
-
 template<size_t Ts>
 std::ostream& operator<<(std::ostream& os, const Frame<Ts>& frame);
 

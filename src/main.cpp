@@ -86,7 +86,7 @@ CycleSet<N> search_square_orbit()
 
 void main_flow()
 {
-    constexpr size_t N = 8;
+    constexpr size_t N = 9;
 
     auto start = std::chrono::steady_clock::now();
     auto cycles = search_square_orbit<N>();
@@ -238,14 +238,38 @@ void main_flow()
 
 void test_flow()
 {
-    for(auto const& mask : Frame<9>::neighbour_mask_lookup)
+    const size_t N = 9;
+//    const size_t cell_row = 0;
+//    const size_t cell_col = 0;
+//    absl::uint128 mask = 0;
+//    for (int i = -1; i < 2; ++i) {
+//        const size_t row = (N + cell_row + i) % N;
+//
+//        for (int j = -1; j < 2; ++j) {
+//
+//            if (i == 0 && j == 0)
+//                continue;
+//
+//            const size_t col = (N + cell_col + j) % N;
+//            const size_t id = row * N + col;
+//            absl::uint128 bitmask = 1;
+//            bitmask = bitmask << id;
+//            mask = mask | bitmask;
+//
+//            cout << Frame<N>(mask) << '\n';
+//        }
+//    }
+//
+//    cout << Frame<9>(mask) << '\n';
+
+    for(auto const& mask : Frame<N>::neighbour_mask_lookup)
     {
-        cout << Frame<8>(mask) << '\n';
+        cout << Frame<N>(mask) << '\n';
     }
 }
 
 int main(int argc, char** argv) {
-    test_flow();
-    //main_flow();
+    //test_flow();
+    main_flow();
     return 0;
 }
