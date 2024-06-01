@@ -1,19 +1,5 @@
 #%%
-import numpy as np
-from scipy.signal import convolve2d
-
-#%% Configure size and visuals
-N = 7
-LIVE_CELL_CHAR = 'O'
-DEAD_CELL_CHAR = '-'
-
 penalty_kernel = np.array([[10, 100, 10], [100, 1, 100], [10, 100, 10]])
-
-def parse_input(str):
-  str = str.replace(DEAD_CELL_CHAR, '0')
-  str = str.replace(LIVE_CELL_CHAR, '1')
-  lines = str.split('\n')
-  return np.array([[int(num) for num in line.split()] for line in lines if line != ''])
 
 def masked_middle(x):
   y = np.copy(x)
@@ -46,8 +32,8 @@ def find_pretty(s):
   
   if min_penalty != 0:
     return prettiest_state
-  # there exists a bounding box
-  # try to find it
+  
+  # 0 penalty means there exists a bounding box
   non_zero_indices = np.argwhere(prettiest_state != 0)
 
   if non_zero_indices.size > 0:  
@@ -60,8 +46,39 @@ def find_pretty(s):
 
     offset = board_midpoint - bounding_box_size // 2 - top_left
     return np.roll(prettiest_state, shift=(offset[0], offset[1]), axis=(0, 1))
-  
-with open('input.txt') as f:
-  str = f.read(2 * N ** 2) # input is spaced out horizontally
-  s = parse_input(str)
-  print(find_pretty(s))
+
+#%% 
+import numpy as np
+from scipy.signal import convolve2d
+
+N = 6
+LIVE_CELL_CHAR = 'O'
+DEAD_CELL_CHAR = '-'
+TOTAL_CONFIGURATIONS = 31
+
+def decimal_encoding_to_np(x):
+  #print(f'decimal encoding: {x}')
+  num = int(x)
+  board = ''.join(reversed(format(num, '08b')))
+  board = board + '0' * (N * N - len(board)) # padding
+  #print(f'binary encoding: {board} [len={len(board)}]')
+  array = np.array([int(bit) for bit in board])
+  return array.reshape(-1, N)
+
+def handle_line(line):
+
+  # tensor 
+  arrays = [decimal_encoding_to_np(id) for id in line.strip().split(' ')]
+  print(arrays)
+
+with open('s6.txt') as f:
+  line_number = 0
+  for line in f:
+
+    # each configuration has N + 3 lines
+    # second line of those N + 3 contains
+    # cycle configuration numbers
+    if line_number % (3 + N) == 1:
+      handle_line(line)
+
+    line_number = line_number + 1
