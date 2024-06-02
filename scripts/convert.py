@@ -1,4 +1,7 @@
-#%%
+#%% 
+import numpy as np
+from scipy.signal import convolve2d
+
 penalty_kernel = np.array([[10, 100, 10], [100, 1, 100], [10, 100, 10]])
 
 def masked_middle(x):
@@ -26,7 +29,7 @@ def find_pretty(s):
 
       p = penalty(s_prime)
 
-      if p < min_penalty:
+      if p <= min_penalty:
         min_penalty = p
         prettiest_state = s_prime
   
@@ -47,28 +50,27 @@ def find_pretty(s):
     offset = board_midpoint - bounding_box_size // 2 - top_left
     return np.roll(prettiest_state, shift=(offset[0], offset[1]), axis=(0, 1))
 
-#%% 
-import numpy as np
-from scipy.signal import convolve2d
-
 N = 6
 LIVE_CELL_CHAR = 'O'
 DEAD_CELL_CHAR = '-'
-TOTAL_CONFIGURATIONS = 31
 
-def decimal_encoding_to_np(x):
-  #print(f'decimal encoding: {x}')
+def decimal_encoding_to_binary(x):
   num = int(x)
   board = ''.join(reversed(format(num, '08b')))
   board = board + '0' * (N * N - len(board)) # padding
-  #print(f'binary encoding: {board} [len={len(board)}]')
-  array = np.array([int(bit) for bit in board])
+  return board
+
+def binary_encoding_to_numpy(x):
+  array = np.array([int(bit) for bit in x])
   return array.reshape(-1, N)
 
-def handle_line(line):
+def decimal_encoding_to_np(x):
+  y = decimal_encoding_to_binary(x)
+  return binary_encoding_to_numpy(y)
 
-  # tensor 
+def handle_line(line):
   arrays = [decimal_encoding_to_np(id) for id in line.strip().split(' ')]
+  arrays = [find_pretty(s) for s in arrays]
   print(arrays)
 
 with open('s6.txt') as f:

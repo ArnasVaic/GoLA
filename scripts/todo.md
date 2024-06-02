@@ -15,8 +15,8 @@ daugiau 11x11 nieko nereikia
 
 ## Mazesni
 
-- visiem padaryti tvarkinga nukirtima
-- bandyti centruoti jei iseina?
+- [x] visiem padaryti tvarkinga nukirtima
+- [x] bandyti centruoti jei iseina?
 
 ### 8x8, 9x9
 

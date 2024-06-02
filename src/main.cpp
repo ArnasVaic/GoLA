@@ -99,8 +99,6 @@ std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal> 
                 cycleStack.push(cycle);
             }
         }
-
-        //cout << "Cycle stack size:" << cycleStack.size() << '\n';
     }
 
     cache.insert(square_cycle);
@@ -177,10 +175,12 @@ void write_matrix_data(
 
     GameOfLife<N> game;
     unordered_map<Frame<N>, size_t, typename Frame<N>::Hash> visited_frames;
+    unordered_map<Cycle<N>, size_t, typename Cycle<N>::Hash, typename Cycle<N>::Equal> dest_cycles;
     vector<Frame<N>> cycle_frames;
 
     Cycle<N> const null_cycle;
     vector<Cycle<N>> cycles_as_vector(cycles.size(), null_cycle);
+    vector<int> destination_frequencies(cycles.size(), 0);
 
     for(auto const& cycle : cycles)
     {
@@ -191,9 +191,6 @@ void write_matrix_data(
     // This loop iterates by index, which means, we don't need to mark what cycle
     // each row will correspond to as the row number - 1 and the index are the same
     for (auto const& cycle: cycles_as_vector) {
-
-        unordered_map<Cycle<N>, size_t, typename Cycle<N>::Hash, typename Cycle<N>::Equal> dest_cycles;
-
         for (auto const& org_frame: cycle.frames()) {
             for (size_t i = 0; i < Frame<N>::CellCount; ++i) {
                 Frame<N> frame = org_frame;
@@ -213,8 +210,6 @@ void write_matrix_data(
         const Index row = indices.at(cycle);
 
         // i'th element is the frequency at which current cycle ends up in cycle with index i.
-        vector<int> destination_frequencies(cycles.size(), 0);
-
         auto const n = static_cast<int64_t>(cycle.frames().size() * Frame<N>::CellCount);
 
         // subtract n from diagonal
@@ -282,9 +277,10 @@ void write_matrix_data(
 
             zero_counter = 0;
         }
-
-        //os << "[sum=" << std::accumulate(destination_frequencies.begin(), destination_frequencies.end(), 0) << "]\n";
         os << '\n';
+
+        destination_frequencies.clear();
+        dest_cycles.clear();
     }
 
     os.close();
@@ -292,7 +288,7 @@ void write_matrix_data(
 
 void main_flow()
 {
-    constexpr size_t N = 5;
+    constexpr size_t N = 7;
 
     auto start = std::chrono::steady_clock::now();
     auto cycles = search_square_orbit<N>();
