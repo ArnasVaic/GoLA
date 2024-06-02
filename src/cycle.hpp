@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <frame.hpp>
+#include "absl/hash/hash.h"
 
 /// @brief 
 /// @tparam Ts size of the board 
@@ -16,6 +17,11 @@ private:
     std::set<Frame<Ts>> m_frames;
 
 public:
+
+    constexpr Cycle()
+    {
+        m_frames = std::set<Frame<Ts>> { Frame<Ts>(0) };
+    }
 
     explicit constexpr Cycle(const std::vector<Frame<Ts>> &frames)
     {
@@ -50,8 +56,8 @@ public:
         for (const auto& frame : frames)
         {
             Frame<Ts> transformed = frame
-                    .translated(min_transform.row_offset, min_transform.col_offset)
-                    .transformed(min_transform.index);
+                .translated(min_transform.row_offset, min_transform.col_offset)
+                .transformed(min_transform.index);
 
             frame_set.insert(transformed);
         }
@@ -71,15 +77,12 @@ public:
     {
         [[nodiscard]] constexpr size_t operator()(const Cycle<Ts>& cycle) const
         {
-
-            std::hash<uint64_t> hasher;
             size_t seed = 0;
-
-            for (const auto& i : cycle.frames()) 
+            for (const auto& frame : cycle.frames())
             {
-                seed ^= hasher(i.get()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+                const typename Frame<Ts>::Hash hasher;
+                seed ^= hasher(frame) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             }
-
             return seed;
         }
     };

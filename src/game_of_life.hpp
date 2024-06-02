@@ -46,7 +46,7 @@ public:
 
             //std:: cout << n;
 
-            //if((i + 1) % Ts == 0)
+            //if((i + 1) % N == 0)
                 //std::cout << '\n';
             const bool a = alive_lookup[alive][n];
 
