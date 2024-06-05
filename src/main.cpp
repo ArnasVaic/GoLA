@@ -8,6 +8,7 @@
 #include <game_of_life.hpp>
 #include <Eigen/Dense>
 #include <random>
+#include <stack>
 
 using namespace std;
 using namespace chrono;
@@ -26,43 +27,6 @@ auto since(std::chrono::time_point<clock_t, duration_t> const& start)
 random_device rd;
 mt19937 gen(rd());
 uniform_int_distribution<> dis(1000, 9999);
-
-#include <stack>
-
-template<size_t N>
-void search_orbit_iterative(
-        Cycle<N> const& parent_cycle,
-        std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal> &visited,
-        std::unordered_map<Frame<N>, size_t, typename Frame<N>::Hash> &visited_frames,
-        std::vector<Frame<N>> &cycle_frames,
-        GameOfLife<N> &game,
-        Frame<N> &frame)
-{
-    std::stack<Cycle<N>> cycleStack;
-    cycleStack.push(parent_cycle);
-
-    while (!cycleStack.empty()) {
-        auto currentCycle = cycleStack.top();
-        cycleStack.pop();
-
-        for (const auto& org_frame : currentCycle.frames()) {
-            for (size_t i = 0; i < Frame<N>::CellCount; ++i) {
-                frame = org_frame;
-                frame.toggle(i);
-                game.set(frame);
-                auto cycle = game.find_cycle(visited_frames, cycle_frames);
-
-                if (visited.find(cycle) != visited.end())
-                    continue;
-
-                visited.insert(cycle);
-                cycleStack.push(cycle);
-            }
-        }
-
-        cout << "Cycle stack size:" << cycleStack.size() << '\n';
-    }
-}
 
 template<size_t N>
 std::unordered_set<Cycle<N>, typename Cycle<N>::Hash, typename Cycle<N>::Equal> search_square_orbit()
@@ -286,150 +250,132 @@ void write_matrix_data(
     os.close();
 }
 
+/// @brief This write is only relevant for 5x5 torus. Together with cycle animations there
+/// should be displayed frames where each cell shows the id of a cycle that will be reached
+/// if said cell was to be perturbed for the respective frame configuration of the cycle.
+/// @param cycles
+/// @param indices
+void write_5x5(
+    unordered_set<Cycle<5>, typename Cycle<5>::Hash, typename Cycle<5>::Equal> const& cycles,
+    unordered_map<Cycle<5>, size_t, typename Cycle<5>::Hash, typename Cycle<5>::Equal> const& indices)
+{
+
+    const string filename = "5x5-destination-frames.txt";
+    ofstream os(filename);
+
+    unordered_map<Frame<5>, size_t, typename Frame<5>::Hash> visited_frames;
+    vector<Frame<5>> cycle_frames;
+
+    std::map<size_t, size_t> preferred_index_lookup = {
+        {0, 0},
+        {1, 5},
+        {2, 9},
+        {3, 6},
+        {4, 7},
+        {5, 3},
+        {6, 8},
+        {7, 4},
+        {8, 2},
+        {9, 1},
+    };
+
+    GameOfLife<5> game;
+
+    if (!os.is_open())
+    {
+        cout << "Could not open file: " << filename << '\n';
+        return;
+    }
+
+    for (const auto &cycle: cycles)
+    {
+        os << "[T = " << cycle.frames().size() << ", id: " << indices.at(cycle) << "]\n";
+
+        for (const auto &frame: cycle.frames())
+        {
+            os << frame.get() << ' ';
+        }
+
+        os << '\n';
+
+        // perturbed destination indices
+        size_t pdi[cycle.frames().size()][5][5];
+
+        // Find indices of perturbed cycle frames
+        size_t frame_index = 0;
+        for (const auto &frame: cycle.frames())
+        {
+            for (size_t i = 0; i < Frame<5>::CellCount; ++i) {
+                Frame<5> perturbed_frame = frame;
+                perturbed_frame.toggle(i);
+                game.set(perturbed_frame);
+                auto dest_cycle = game.find_cycle(visited_frames, cycle_frames);
+
+                //cout << dest_cycle << '\n';
+
+                const size_t perturbed_cycle_index = indices.at(dest_cycle);
+                //cout << "cycle id: " << perturbed_cycle_index << '\n';
+                const size_t row = i / 5, col = i % 5;
+
+                //cout << "(row, col) = (" << row << ", " << col << ")\n";
+
+                pdi[frame_index][col][row] = preferred_index_lookup.at(perturbed_cycle_index);
+            }
+            ++frame_index;
+        }
+
+        // print pretty pdi
+        for(size_t row = 0; row < 5; ++row)
+        {
+            for(size_t frame = 0; frame < cycle.frames().size(); ++frame)
+            {
+                for(size_t col = 0; col < 5; ++col)
+                {
+                    os << pdi[frame][col][row] << ' ';
+                }
+                os << "  ";
+            }
+            os << '\n';
+        }
+
+        os << '\n' << cycle << '\n';
+    }
+
+    os.close();
+}
+
 void main_flow()
 {
-    constexpr size_t N = 7;
-
+    constexpr size_t N = 5;
     auto start = std::chrono::steady_clock::now();
     auto cycles = search_square_orbit<N>();
     cout << "Elapsed(ms)=" << since(start).count() << ", cycles found: " << cycles.size() << '\n';
-    GameOfLife<N> game;
     const auto indices = assign_indices(cycles);
     write_cycle_data(cycles, indices);
     write_matrix_data(cycles, indices);
-
-//    random_device rd;
-//    mt19937 gen(rd());
-//    uniform_int_distribution<> dis(1000, 9999);
-//    string filename = "s" + to_string(N) + "-" + to_string(dis(gen)) + ".txt";
-//    ofstream os(filename);
-//
-//    if (!os.is_open()) {
-//        cout << "Could not output input file: " << filename << '\n';
-//        return;
-//    }
-//
-//    // place empty space in the front
-//    auto null_cycle = find_if(cycles.begin(), cycles.end(), [](Cycle<N> const &cycle) {
-//        Frame<N> zero(0);
-//        auto const& frames = cycle.frames();
-//        return frames.contains(zero);
-//    });
-//
-//    unordered_map<Cycle<N>, size_t, Cycle<N>::Hash, Cycle<N>::Equal> cycle_indices;
-//
-//    cycle_indices[*null_cycle] = 0;
-//
-//    size_t cycle_index_assignment_index = 1;
-//    for (const auto &cycle: cycles) {
-//        if (Cycle<N>::Equal()(cycle, *null_cycle))
-//            continue;
-//
-//        cycle_indices[cycle] = cycle_index_assignment_index++;
-//    }
-//
-//    /// Cycles are stored in a vector in an order specified by cycle_indices
-//    vector<Cycle<N>> cycles_vec(cycles.size(), *null_cycle);
-//    for (auto const &c: cycles) {
-//        cycles_vec[cycle_indices[c]] = c;
-//    }
-//
-//
-//    for (const auto &cycle: cycles) {
-//        os << "[T = " << cycle.frames().size() << ", id: " << cycle_indices[cycle] << "]\n";
-//        for (const auto &frame: cycle.frames())
-//            os << frame.get() << ' ';
-//        os << '\n' << cycle << '\n';
-//    }
-//
-//    unordered_map<Frame<N>, size_t, Frame<N>::Hash> visited_frames;
-//    vector<Frame<N>> cycle_frames;
-//
-//    MatrixXd matrix_divided(cycles.size(), cycles.size());
-//    matrix_divided.setZero();
-//
-//    MatrixXi matrix(cycles.size(), cycles.size());
-//    matrix.setZero();
-//
-//    for (const auto &cycle: cycles) {
-//        unordered_map<Cycle<N>, size_t, Cycle<N>::Hash, Cycle<N>::Equal> dest_cycles;
-//
-//        for (const auto &org_frame: cycle.frames()) {
-//            for (size_t i = 0; i < Frame<N>::CellCount; ++i) {
-//                Frame<N> frame = org_frame;
-//                frame.toggle(i);
-//                game.set(frame);
-//                auto dest_cycle = game.find_cycle(visited_frames, cycle_frames);
-//
-//                if (dest_cycles.contains(dest_cycle))
-//                    dest_cycles[dest_cycle]++;
-//                else
-//                    dest_cycles[dest_cycle] = 1;
-//            }
-//        }
-//
-//        for (const auto &[dest_cycle, dest_freq]: dest_cycles) {
-//            const Index row = cycle_indices[dest_cycle];
-//            const Index col = cycle_indices[cycle];
-//            const auto n = static_cast<double>(cycle.frames().size() * Frame<N>::CellCount);
-//            matrix(row, col) += dest_freq;// / n;
-//            matrix_divided(row, col) += dest_freq / n;
-//        }
-//    }
-//
-////    for (int i = 0; i < matrix.rows(); ++i)
-////    {
-////        for (int j = 0; j < matrix.cols(); ++j)
-////        {
-////            const auto n = cycles_vec[j].frames().size() * Frame<N>::CellCount;
-////            matrix(i, j) /= n;
-////        }
-////    }
-//
-//    //os << "Divide immediately\n";
-//    //os << N * N * (matrix_divided - MatrixXd::Identity(matrix_divided.rows(), matrix_divided.cols())) << '\n';
-//    //os << "Divide after\n";
-//    //os << N * N * (matrix - MatrixXi::Identity(matrix_divided.rows(), matrix_divided.cols()))<< '\n';;
-//
-//    //matrix -= MatrixXi::Identity(matrix.rows(), matrix.cols());
-//    //matrix *= N * N;
-//    //EigenSolver<MatrixXd> solver(matrix);
-//
-//    //os << solver.eigenvalues() << endl;
-//
-//    for(Index i = 0; i < matrix.rows(); ++i)
-//    {
-//        for(Index j = 0; j < matrix.cols(); ++j)
-//        {
-//            const int n = cycles_vec[j].frames().size() * Frame<N>::CellCount;
-//
-//            // we're on the diagonal
-//            if(i == j)
-//                matrix(i, j) -= n;
-//
-//            // scale each entry
-//            matrix(i, j) *= N * N;
-//
-//            if(0 == matrix(i, j) || 0 == matrix(i, j) % n)
-//            {
-//                os << setw(10) <<  matrix(i, j) / n;
-//            }
-//            else
-//            {
-//                int d = gcd(matrix(i, j), n);
-//                char buf[20];
-//                sprintf(buf, "%d/%d", matrix(i,j) / d, n / d);
-//                os << setw(10) << buf;
-//            }
-//        }
-//        os << '\n';
-//    }
-//    os << "Col Sums: " << matrix.colwise().sum() << '\n';
-//    os << "Row Sums: " << matrix.rowwise().sum().transpose() << '\n';
-//    os.close();
 }
 
+void special_5x5_flow()
+{
+    auto start = std::chrono::steady_clock::now();
+    unordered_set<Cycle<5>, typename Cycle<5>::Hash, typename Cycle<5>::Equal> cycles;
+    unordered_map<Frame<5>, size_t, typename Frame<5>::Hash> visited_frames;
+    vector<Frame<5>> cycle_frames;
+    GameOfLife<5> game;
+    for(size_t i = 0; i < (1 << 24); ++i)
+    {
+        game.set(Frame<5>(i));
+        const auto cycle = game.find_cycle(visited_frames, cycle_frames);
+        cycles.insert(cycle);
+    }
+
+    cout << "Elapsed(ms)=" << since(start).count() << ", cycles found: " << cycles.size() << '\n';
+    const auto indices = assign_indices(cycles);
+    write_5x5(cycles, indices);
+}
+
+
 int main(int argc, char** argv) {
-    main_flow();
+    special_5x5_flow();
     return 0;
 }
