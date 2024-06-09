@@ -28,4 +28,4 @@ daugiau 11x11 nieko nereikia
 
 ## Papildomas (5x5)
 
-Atspauzindit salia kopijas kur vietoj lasteles 'gyvumo' parsytas id konfiguracijos i kuri pereina (tik 5x5)
+- [x] Atspauzindit salia kopijas kur vietoj lasteles 'gyvumo' parsytas id konfiguracijos i kuri pereina (tik 5x5)
