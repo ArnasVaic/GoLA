@@ -266,19 +266,6 @@ void write_5x5(
     unordered_map<Frame<5>, size_t, typename Frame<5>::Hash> visited_frames;
     vector<Frame<5>> cycle_frames;
 
-    std::map<size_t, size_t> preferred_index_lookup = {
-        {0, 0},
-        {1, 5},
-        {2, 9},
-        {3, 6},
-        {4, 7},
-        {5, 3},
-        {6, 8},
-        {7, 4},
-        {8, 2},
-        {9, 1},
-    };
-
     GameOfLife<5> game;
 
     if (!os.is_open())
@@ -319,7 +306,7 @@ void write_5x5(
 
                 //cout << "(row, col) = (" << row << ", " << col << ")\n";
 
-                pdi[frame_index][col][row] = preferred_index_lookup.at(perturbed_cycle_index);
+                pdi[frame_index][col][row] = perturbed_cycle_index;
             }
             ++frame_index;
         }
@@ -367,6 +354,13 @@ void special_5x5_flow()
         game.set(Frame<5>(i));
         const auto cycle = game.find_cycle(visited_frames, cycle_frames);
         cycles.insert(cycle);
+
+        constexpr double step = 1.f / 20.f;
+        constexpr size_t items_per_step = (1 << 24) * step;
+        if(i % items_per_step == 0) {
+            cout << "Searched " << 100 * static_cast<double>(i) / static_cast<double>(1 << 24) << "% of all states\n";
+        }
+
     }
 
     cout << "Elapsed(ms)=" << since(start).count() << ", cycles found: " << cycles.size() << '\n';
