@@ -8,7 +8,7 @@ daugiau 11x11 nieko nereikia
 
 11x11 - 30 milijonu ciklu
 
-- atminties panaudojimas 
+- atminties panaudojimas
 - laikas (paziureti priklausomybe)
 
 - pagalvoti apie kazkoki tarpini rezultata kad nereiktu skaiciuoti is naujo
