@@ -97,7 +97,7 @@ std::ostream& operator<<(std::ostream& os, const Cycle<Ts>& cycle)
         {
             for(size_t col = 0; col < Ts; ++col)
             {
-                char ch = frame.get(row, col) ? '#' : '.';
+                char ch = frame.get(row, col) ? 'O' : '-';
                 os << ch << ' ';
             }
             os << "  ";
