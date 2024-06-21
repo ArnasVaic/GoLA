@@ -352,7 +352,7 @@ template<size_t N>
 std::ostream &operator<<(std::ostream &os, const Frame<N> &frame) {
     for(size_t i = 0; i < frame.CellCount; ++i)
     {
-        os << (frame.get(i) ? '#' : '.') << ' ';
+        os << ' ' << (frame.get(i) ? 'O' : '-');
 
         if((1 + i) % N == 0)
             os << '\n';

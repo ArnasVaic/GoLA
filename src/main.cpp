@@ -9,6 +9,7 @@
 #include <Eigen/Dense>
 #include <random>
 #include <stack>
+#include "process_rates_and_decays.hpp"
 
 using namespace std;
 using namespace chrono;
@@ -169,6 +170,13 @@ void write_matrix_data(
             }
         }
 
+        os << "Cycle[" << indices.at(cycle) << "] has " << dest_cycles.size() << "unique destination cycles.\n";
+
+        for (auto const& [dest_cycle, dest_freq] : dest_cycles)
+        {
+            os << indices.at(dest_cycle) << ' ';
+        }
+
         size_t freq = 0;
 
         const Index row = indices.at(cycle);
@@ -192,55 +200,57 @@ void write_matrix_data(
         {
             auto const scaled = static_cast<int64_t>(frequency * N * N);
 
-            if(0 == scaled)
-            {
-                ++zero_counter;
-            }
-            else
-            {
-                // reset the zero counter and print zeros
+            os << scaled << ' ';
 
-                if(zero_counter > 0)
-                {
-                    if(1 == zero_counter)
-                    {
-                        os << 0 << ' ';
-                    }
-                    else
-                    {
-                        os << 0 << '$' << zero_counter << ' ';
-                    }
-
-                    zero_counter = 0;
-                }
-
-                if(0 == scaled % n)
-                {
-                    os << scaled / n << ' ';
-                }
-                else
-                {
-                    int d = gcd(scaled, n);
-                    char buf[20];
-                    sprintf(buf, "%lli/%lli", scaled / d, n / d);
-                    os << buf << ' ';
-                }
-            }
+//            if(0 == scaled)
+//            {
+//                ++zero_counter;
+//            }
+//            else
+//            {
+//                // reset the zero counter and print zeros
+//
+//                if(zero_counter > 0)
+//                {
+//                    if(1 == zero_counter)
+//                    {
+//                        os << 0 << ' ';
+//                    }
+//                    else
+//                    {
+//                        os << 0 << '$' << zero_counter << ' ';
+//                    }
+//
+//                    zero_counter = 0;
+//                }
+//
+//                if(0 == scaled % n)
+//                {
+//                    os << scaled / n << ' ';
+//                }
+//                else
+//                {
+//                    int d = gcd(scaled, n);
+//                    char buf[20];
+//                    sprintf(buf, "%lli/%lli", scaled / d, n / d);
+//                    os << buf << ' ';
+//                }
+//            }
         }
 
-        if(zero_counter > 0)
-        {
-            if(1 == zero_counter)
-            {
-                os << 0 << ' ';
-            }
-            else
-            {
-                os << 0 << '$' << zero_counter << ' ';
-            }
-
-            zero_counter = 0;
-        }
+//        if(zero_counter > 0)
+//        {
+//            if(1 == zero_counter)
+//            {
+//                os << 0 << ' ';
+//            }
+//            else
+//            {
+//                os << 0 << '$' << zero_counter << ' ';
+//            }
+//
+//            zero_counter = 0;
+//        }
         os << '\n';
 
         destination_frequencies.clear();
@@ -360,7 +370,6 @@ void special_5x5_flow()
         if(i % items_per_step == 0) {
             cout << "Searched " << 100 * static_cast<double>(i) / static_cast<double>(1 << 24) << "% of all states\n";
         }
-
     }
 
     cout << "Elapsed(ms)=" << since(start).count() << ", cycles found: " << cycles.size() << '\n';
@@ -370,6 +379,9 @@ void special_5x5_flow()
 
 
 int main(int argc, char** argv) {
-    special_5x5_flow();
+    process_rates_and_decays<9>(
+        "9-altered.txt",
+        "ranks-9.txt",
+        "eigen-9.txt");
     return 0;
 }
